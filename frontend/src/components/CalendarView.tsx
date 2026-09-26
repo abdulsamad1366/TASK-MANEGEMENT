@@ -89,7 +89,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ tasks, onTaskClick }
             <div
               key={day.toISOString()}
               className={cn(
-                'min-h-[100px] p-2 rounded-xl border flex flex-col transition',
+                'min-h-25 p-2 rounded-xl border flex flex-col transition',
                 isCurrentMonth
                   ? 'bg-slate-50/60 border-slate-200/80'
                   : 'bg-slate-50/20 border-slate-100 opacity-40',
@@ -113,7 +113,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ tasks, onTaskClick }
               </div>
 
               {/* Day tasks chips */}
-              <div className="space-y-1 overflow-y-auto max-h-[70px] pr-0.5">
+              <div className="space-y-1 overflow-y-auto max-h-17.5 pr-0.5">
                 {dayTasks.map((t) => {
                   const p = getPriorityBadge(t.priority);
                   return (

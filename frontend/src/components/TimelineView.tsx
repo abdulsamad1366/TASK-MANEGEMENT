@@ -18,7 +18,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ tasks, onTaskClick }
 
   return (
     <div className="rounded-xl bg-white border border-slate-200/80 p-5 shadow-xs overflow-x-auto">
-      <div className="min-w-[750px]">
+      <div className="min-w-187.5">
         {/* Timeline Header Days */}
         <div className="flex border-b border-slate-200 pb-2.5 mb-3">
           <div className="w-56 font-bold text-xs text-slate-400 uppercase tracking-wider shrink-0">

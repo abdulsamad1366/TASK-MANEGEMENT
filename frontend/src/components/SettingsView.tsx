@@ -293,7 +293,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
           {/* Notification Preferences */}
           <div className="pt-2 border-t border-slate-100">
-            <label className="block text-xs font-semibold text-slate-700 mb-2.5 flex items-center gap-1.5">
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-2.5">
               <Bell className="w-3.5 h-3.5 text-[#7B68EE]" />
               Notification Preferences
             </label>

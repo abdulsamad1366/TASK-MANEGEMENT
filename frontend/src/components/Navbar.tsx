@@ -46,7 +46,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="w-5 h-5 rounded-md bg-purple-100 text-[#7B68EE] flex items-center justify-center font-bold text-[10px]">
               {activeWorkspace?.name?.charAt(0) || 'W'}
             </div>
-            <span className="truncate max-w-[130px]">{activeWorkspace?.name || 'Workspace'}</span>
+            <span className="truncate max-w-32.5">{activeWorkspace?.name || 'Workspace'}</span>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
           </button>
 
