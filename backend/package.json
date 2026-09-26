@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "build": "prisma generate && tsc",
     "start": "node dist/server.js",
     "db:sqlite": "cp prisma/schema.sqlite.prisma prisma/schema.prisma && prisma generate && prisma db push",
     "db:supabase": "cp prisma/schema.supabase.prisma prisma/schema.prisma && prisma generate && prisma db push",
