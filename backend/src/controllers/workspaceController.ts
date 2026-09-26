@@ -282,6 +282,18 @@ export const updateWorkspace = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { name, description, logoUrl, type, joinPolicy, plan } = req.body;
 
+    const existing = await prisma.workspace.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ error: 'Workspace not found' });
+
+    // If changing joinPolicy (allowing or disabling shareable link), only the OWNER can do this
+    if (joinPolicy !== undefined && joinPolicy !== existing.joinPolicy) {
+      if (existing.ownerId !== req.user!.id) {
+        return res.status(403).json({
+          error: 'Only the workspace owner can allow or disable the shareable join link',
+        });
+      }
+    }
+
     const workspace = await prisma.workspace.update({
       where: { id },
       data: {
@@ -638,6 +650,13 @@ export const regenerateInviteCode = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Workspace not found' });
     }
 
+    // Only the workspace OWNER can regenerate the shareable link
+    if (workspace.ownerId !== req.user!.id) {
+      return res.status(403).json({
+        error: 'Only the workspace owner can regenerate the shareable join link',
+      });
+    }
+
     const baseSlug = workspace.slug.split('-')[0] || 'flow';
     const newJoinSlug = `${baseSlug}-${Math.random().toString(36).substring(2, 8).toLowerCase()}`;
     const prefix = workspace.slug ? workspace.slug.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8) : 'FLOW';
@@ -713,6 +732,13 @@ export const getJoinInfo = async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Personal workspaces do not allow public join requests.' });
     }
 
+    // For TEAM workspaces, the owner must have explicitly enabled the shareable link
+    if (workspace.type === 'TEAM' && workspace.joinPolicy !== 'PUBLIC_LINK') {
+      return res.status(403).json({
+        error: 'The workspace owner has not enabled public link joining for this workspace. Please request an email invitation directly.',
+      });
+    }
+
     return res.status(200).json({
       workspace: {
         ...workspace,
@@ -748,6 +774,13 @@ export const createJoinRequest = async (req: Request, res: Response) => {
 
     if (workspace.type === 'PERSONAL') {
       return res.status(403).json({ error: 'Personal workspaces do not allow public join requests.' });
+    }
+
+    // For TEAM workspaces, the owner must have explicitly enabled the shareable link
+    if (workspace.type === 'TEAM' && workspace.joinPolicy !== 'PUBLIC_LINK') {
+      return res.status(403).json({
+        error: 'The workspace owner has not enabled public link joining for this workspace. Please request an email invitation directly.',
+      });
     }
 
     // Check if user is already a member

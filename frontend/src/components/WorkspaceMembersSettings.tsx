@@ -94,13 +94,14 @@ export const WorkspaceMembersSettings: React.FC<WorkspaceMembersSettingsProps> =
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Determine current user's role in this workspace
+  // Determine current user's role and ownership in this workspace
+  const isOwner = currentWorkspace.ownerId === user?.id;
   const currentUserMembership = members.find((m) => m.userId === user?.id);
   const userRole: Role =
     currentUserMembership?.role ||
-    (workspace.ownerId === user?.id ? 'ADMIN' : 'MEMBER');
+    (isOwner ? 'ADMIN' : 'MEMBER');
 
-  const isAdmin = userRole === 'ADMIN' || user?.role === 'ADMIN';
+  const isAdmin = userRole === 'ADMIN' || user?.role === 'ADMIN' || isOwner;
   const isManager = userRole === 'MANAGER';
   const canManageInvites = isAdmin || isManager;
   const canManageRoles = isAdmin;
@@ -269,7 +270,10 @@ export const WorkspaceMembersSettings: React.FC<WorkspaceMembersSettingsProps> =
   };
 
   const handleToggleJoinPolicy = async () => {
-    if (!isAdmin) return;
+    if (!isOwner) {
+      addToast('error', 'Only the workspace owner can allow or disable the shareable join link');
+      return;
+    }
     setIsTogglingLinkPolicy(true);
 
     const newPolicy =
@@ -284,8 +288,8 @@ export const WorkspaceMembersSettings: React.FC<WorkspaceMembersSettingsProps> =
       addToast(
         'success',
         newPolicy === 'PUBLIC_LINK'
-          ? 'Shareable join link enabled for anyone with the link'
-          : 'Shareable join link disabled. Workspace is now invite-only'
+          ? 'Shareable join link enabled by owner (requires Admin approval to join)'
+          : 'Shareable join link disabled by owner. Workspace is now invite-only'
       );
       if (onWorkspaceUpdated) onWorkspaceUpdated(res.workspace);
     } catch (err: any) {
@@ -296,7 +300,10 @@ export const WorkspaceMembersSettings: React.FC<WorkspaceMembersSettingsProps> =
   };
 
   const handleRegenerateLink = async () => {
-    if (!isAdmin) return;
+    if (!isOwner) {
+      addToast('error', 'Only the workspace owner can regenerate the shareable link');
+      return;
+    }
     if (
       !confirm(
         'Are you sure you want to regenerate the shareable link? Any previous link sent will immediately become invalid.'
@@ -309,7 +316,7 @@ export const WorkspaceMembersSettings: React.FC<WorkspaceMembersSettingsProps> =
     try {
       const res = await api.regenerateInviteCode(currentWorkspace.id);
       setCurrentWorkspace(res.workspace);
-      addToast('success', 'New shareable invite link generated! Old links are now invalid.');
+      addToast('success', 'New shareable join link generated! Old links are now invalid.');
       if (onWorkspaceUpdated) onWorkspaceUpdated(res.workspace);
     } catch (err: any) {
       addToast('error', err.message || 'Failed to regenerate invite link');
@@ -606,34 +613,49 @@ export const WorkspaceMembersSettings: React.FC<WorkspaceMembersSettingsProps> =
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Toggle Switch for Team Workspaces */}
-            {currentWorkspace.type === 'TEAM' && isAdmin && (
+            {/* Toggle Switch for Team Workspaces - Only Workspace Owner Can Allow or Disable */}
+            {currentWorkspace.type === 'TEAM' && (
               <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/70">
-                <div>
-                  <div className="text-xs font-bold text-slate-800">
-                    Enable Shareable Public Join Link
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-slate-800">
+                      Allow Joining via Shareable Link
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-md bg-purple-100 text-[#7B68EE] text-[9px] font-bold">
+                      <Crown className="w-2.5 h-2.5" />
+                      Owner Only
+                    </span>
                   </div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">
-                    When enabled, anyone with this link can request to join the workspace (requires Admin approval).
+                  <div className="text-[11px] text-slate-500">
+                    {isOwner
+                      ? 'When enabled, anyone with this link can request to join (requires Admin approval).'
+                      : 'Only the workspace owner can allow or disable this shareable link.'}
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleToggleJoinPolicy}
-                  disabled={isTogglingLinkPolicy}
-                  className={cn(
-                    'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
-                    isShareableLinkActive ? 'bg-[#7B68EE]' : 'bg-slate-300'
-                  )}
-                >
-                  <span
+                {isOwner ? (
+                  <button
+                    type="button"
+                    onClick={handleToggleJoinPolicy}
+                    disabled={isTogglingLinkPolicy}
                     className={cn(
-                      'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-                      isShareableLinkActive ? 'translate-x-5' : 'translate-x-0'
+                      'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
+                      isShareableLinkActive ? 'bg-[#7B68EE]' : 'bg-slate-300'
                     )}
-                  />
-                </button>
+                  >
+                    <span
+                      className={cn(
+                        'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                        isShareableLinkActive ? 'translate-x-5' : 'translate-x-0'
+                      )}
+                    />
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-lg">
+                    <Lock className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Owner required</span>
+                  </div>
+                )}
               </div>
             )}
 
@@ -664,12 +686,12 @@ export const WorkspaceMembersSettings: React.FC<WorkspaceMembersSettingsProps> =
                       )}
                     </button>
 
-                    {isAdmin && (
+                    {isOwner && (
                       <button
                         type="button"
                         onClick={handleRegenerateLink}
                         disabled={isRegeneratingLink}
-                        title="Invalidates previous link and creates a fresh link"
+                        title="Invalidates previous link and creates a fresh link (Owner only)"
                         className="px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition flex items-center gap-1.5 shrink-0"
                       >
                         <RefreshCw className={cn('w-3.5 h-3.5', isRegeneratingLink && 'animate-spin')} />
@@ -685,8 +707,11 @@ export const WorkspaceMembersSettings: React.FC<WorkspaceMembersSettingsProps> =
                 </div>
               </div>
             ) : (
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-500">
-                Shareable link joining is currently disabled. Teammates can only join when invited directly by email above.
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-500 flex items-center gap-2">
+                <Lock className="w-4 h-4 text-slate-400 shrink-0" />
+                <span>
+                  Shareable link joining is currently disabled by the workspace owner. Teammates can only join when invited directly by email above.
+                </span>
               </div>
             )}
           </div>
