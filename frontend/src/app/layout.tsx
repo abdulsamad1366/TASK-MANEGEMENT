@@ -15,9 +15,6 @@ export const metadata: Metadata = {
   title: 'Flowdesk — Team Task & Project Management',
   description:
     'Clean, light, minimal team task management and real-time collaboration platform.',
-  icons: {
-    icon: '/logo.png',
-  },
 };
 
 export default function RootLayout({
