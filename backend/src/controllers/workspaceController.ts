@@ -11,21 +11,31 @@ export const listWorkspaces = async (req: Request, res: Response) => {
         workspace: {
           include: {
             _count: {
-              select: { members: true, projects: true },
+              select: { members: true, spaces: true },
             },
-            projects: {
-              select: { id: true, name: true, key: true, color: true },
+            spaces: {
+              include: {
+                projects: {
+                  select: { id: true, name: true, key: true, color: true },
+                },
+              },
             },
           },
         },
       },
     });
 
-    const workspaces = memberships.map((m) => ({
-      ...m.workspace,
-      currentUserRole: m.role,
-      joinedAt: m.joinedAt,
-    }));
+    const workspaces = memberships.map((m) => {
+      const spaces = (m.workspace as any).spaces || [];
+      const projects = spaces.flatMap((s: any) => s.projects || []);
+      return {
+        ...m.workspace,
+        spaces,
+        projects,
+        currentUserRole: m.role,
+        joinedAt: m.joinedAt,
+      };
+    });
 
     return res.status(200).json({ workspaces });
   } catch (error) {
@@ -47,10 +57,17 @@ export const getWorkspace = async (req: Request, res: Response) => {
             },
           },
         },
-        projects: {
+        spaces: {
           include: {
-            _count: {
-              select: { tasks: true },
+            projects: {
+              include: {
+                lists: {
+                  include: {
+                    columns: true,
+                    _count: { select: { tasks: true } },
+                  },
+                },
+              },
             },
           },
         },

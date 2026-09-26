@@ -3,8 +3,43 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  MEMBER
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum RecurrenceRule {
+  NONE
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum NotificationType {
+  ASSIGNMENT
+  MENTION
+  DUE_DATE
+  CHAT
+  STATUS_CHANGE
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
 }
 
 model User {
@@ -13,7 +48,7 @@ model User {
   passwordHash          String
   name                  String
   avatarUrl             String?
-  role                  String              @default("MEMBER") // ADMIN, MANAGER, MEMBER
+  role                  Role                @default(MEMBER)
   notificationSettings  String?             @default("{\"email\":true,\"assignments\":true,\"comments\":true,\"mentions\":true,\"dueDates\":true,\"chat\":true}")
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
@@ -49,7 +84,7 @@ model WorkspaceMember {
   id          String    @id @default(cuid())
   workspaceId String
   userId      String
-  role        String    @default("MEMBER") // ADMIN, MANAGER, MEMBER
+  role        Role      @default(MEMBER)
   joinedAt    DateTime  @default(now())
 
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
@@ -59,16 +94,16 @@ model WorkspaceMember {
 }
 
 model WorkspaceInvitation {
-  id          String   @id @default(cuid())
+  id          String           @id @default(cuid())
   workspaceId String
   email       String
-  role        String   @default("MEMBER")
-  token       String   @unique
-  status      String   @default("PENDING") // PENDING, ACCEPTED, EXPIRED
+  role        Role             @default(MEMBER)
+  token       String           @unique
+  status      InvitationStatus @default(PENDING)
   expiresAt   DateTime
-  createdAt   DateTime @default(now())
+  createdAt   DateTime         @default(now())
 
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 // ClickUp Hierarchy: Workspace > Space > Project > List > Task
@@ -76,7 +111,7 @@ model Space {
   id          String    @id @default(cuid())
   workspaceId String
   name        String    // e.g. "Engineering", "Design", "Marketing"
-  color       String    @default("#7B68EE") // ClickUp signature purple
+  color       String    @default("#7B68EE")
   icon        String?   @default("rocket")
   order       Int       @default(0)
   createdAt   DateTime  @default(now())
@@ -138,16 +173,16 @@ model Task {
   columnId       String
   taskNumber     Int             @default(1)
   title          String
-  description    String?         // Rich Markdown text
-  priority       String          @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  description    String?
+  priority       Priority        @default(MEDIUM)
   order          Float           @default(0)
   startDate      DateTime?
   dueDate        DateTime?
-  timeEstimate   String?         // e.g. "2h 30m"
-  coverImage     String?         // Card cover image URL
-  labels         String          @default("[]") // JSON array of tag strings
+  timeEstimate   String?         // "2h 30m"
+  coverImage     String?
+  labels         String          @default("[]")
   isRecurring    Boolean         @default(false)
-  recurrenceRule String          @default("NONE") // NONE, DAILY, WEEKLY, MONTHLY
+  recurrenceRule RecurrenceRule  @default(NONE)
   creatorId      String
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
@@ -158,9 +193,9 @@ model Task {
   
   assignees      TaskAssignee[]
   subtasks       Subtask[]
-  comments       Comment[]       // In-task chat & discussion
-  attachments    Attachment[]    // Uploaded files & images
-  activityLogs   ActivityLog[]   // Dedicated audit trail
+  comments       Comment[]
+  attachments    Attachment[]
+  activityLogs   ActivityLog[]
 
   blocking       TaskDependency[] @relation("BlockingTask")
   blockedBy      TaskDependency[] @relation("BlockedByTask")
@@ -194,8 +229,8 @@ model Subtask {
 
 model TaskDependency {
   id              String   @id @default(cuid())
-  taskId          String   // The task that is blocked
-  dependsOnTaskId String   // The task blocking it
+  taskId          String
+  dependsOnTaskId String
   createdAt       DateTime @default(now())
 
   task            Task     @relation("BlockedByTask", fields: [taskId], references: [id], onDelete: Cascade)
@@ -204,7 +239,6 @@ model TaskDependency {
   @@unique([taskId, dependsOnTaskId])
 }
 
-// In-Task Chat Message (supports text, @mentions, and image sharing)
 model Comment {
   id        String   @id @default(cuid())
   taskId    String
@@ -237,13 +271,12 @@ model Attachment {
   @@index([taskId])
 }
 
-// Dedicated Audit Trail (separate from In-Task Chat)
 model ActivityLog {
   id        String   @id @default(cuid())
   taskId    String
   userId    String
-  action    String   // "STATUS_CHANGE", "ASSIGNED", "PRIORITY_CHANGE", "TIME_ESTIMATE", etc.
-  details   String   // JSON string details e.g. {"from": "To Do", "to": "In Progress"}
+  action    String
+  details   String
   createdAt DateTime @default(now())
 
   task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
@@ -253,19 +286,19 @@ model ActivityLog {
 }
 
 model Notification {
-  id         String   @id @default(cuid())
-  userId     String   // recipient
-  actorId    String?  // user who triggered it
-  type       String   // ASSIGNMENT, MENTION, DUE_DATE, CHAT, STATUS_CHANGE
+  id         String           @id @default(cuid())
+  userId     String
+  actorId    String?
+  type       NotificationType
   title      String
   message    String
-  entityType String?  // "TASK", "PROJECT", "WORKSPACE", "LIST"
+  entityType String?
   entityId   String?
-  isRead     Boolean  @default(false)
-  createdAt  DateTime @default(now())
+  isRead     Boolean          @default(false)
+  createdAt  DateTime         @default(now())
 
-  user       User     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
-  actor      User?    @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  user       User             @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  actor      User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([userId, isRead])
 }

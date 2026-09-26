@@ -186,8 +186,12 @@ export const getMe = async (req: Request, res: Response) => {
           include: {
             workspace: {
               include: {
-                projects: {
-                  select: { id: true, name: true, key: true, color: true },
+                spaces: {
+                  include: {
+                    projects: {
+                      select: { id: true, name: true, key: true, color: true },
+                    },
+                  },
                 },
               },
             },
@@ -209,14 +213,19 @@ export const getMe = async (req: Request, res: Response) => {
       notificationSettings: user.notificationSettings
         ? JSON.parse(user.notificationSettings)
         : {},
-      workspaces: user.workspaceMemberships.map((m) => ({
-        workspaceId: m.workspaceId,
-        role: m.role,
-        name: m.workspace.name,
-        slug: m.workspace.slug,
-        logoUrl: m.workspace.logoUrl,
-        projects: m.workspace.projects,
-      })),
+      workspaces: user.workspaceMemberships.map((m) => {
+        const spaces = (m.workspace as any).spaces || [];
+        const projects = spaces.flatMap((s: any) => s.projects || []);
+        return {
+          workspaceId: m.workspaceId,
+          role: m.role,
+          name: m.workspace.name,
+          slug: m.workspace.slug,
+          logoUrl: m.workspace.logoUrl,
+          spaces,
+          projects,
+        };
+      }),
     };
 
     return res.status(200).json({ user: formattedUser });

@@ -4,19 +4,26 @@ import { emitToProject } from '../services/socket';
 
 export const listProjects = async (req: Request, res: Response) => {
   try {
-    const { workspaceId } = req.query;
-    if (!workspaceId) {
-      return res.status(400).json({ error: 'workspaceId query parameter is required' });
+    const { workspaceId, spaceId } = req.query;
+
+    const where: any = {};
+    if (spaceId) {
+      where.spaceId = String(spaceId);
+    } else if (workspaceId) {
+      where.space = { workspaceId: String(workspaceId) };
     }
 
     const projects = await prisma.project.findMany({
-      where: { workspaceId: String(workspaceId) },
+      where,
       include: {
-        _count: {
-          select: { tasks: true, columns: true },
+        space: {
+          select: { id: true, name: true, color: true, workspaceId: true },
         },
-        columns: {
-          orderBy: { order: 'asc' },
+        lists: {
+          include: {
+            columns: { orderBy: { order: 'asc' } },
+            _count: { select: { tasks: true } },
+          },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -36,23 +43,30 @@ export const getProject = async (req: Request, res: Response) => {
     const project = await prisma.project.findUnique({
       where: { id },
       include: {
-        workspace: {
+        space: {
           include: {
-            members: {
+            workspace: {
               include: {
-                user: {
-                  select: { id: true, name: true, email: true, avatarUrl: true },
+                members: {
+                  include: {
+                    user: {
+                      select: { id: true, name: true, email: true, avatarUrl: true },
+                    },
+                  },
                 },
               },
             },
           },
         },
-        columns: {
-          orderBy: { order: 'asc' },
+        lists: {
           include: {
+            columns: {
+              orderBy: { order: 'asc' },
+            },
             tasks: {
               orderBy: { order: 'asc' },
               include: {
+                column: true,
                 assignees: {
                   include: {
                     user: {
@@ -88,42 +102,73 @@ export const getProject = async (req: Request, res: Response) => {
 
 export const createProject = async (req: Request, res: Response) => {
   try {
-    const { workspaceId, name, key, description, color = '#6366f1', icon = 'folder' } = req.body;
+    const { spaceId, workspaceId, name, key, description, color = '#6366f1', icon = 'folder' } = req.body;
 
-    if (!workspaceId || !name || !key) {
-      return res.status(400).json({ error: 'workspaceId, name, and key are required' });
+    if (!name || !key) {
+      return res.status(400).json({ error: 'name and key are required' });
+    }
+
+    let targetSpaceId = spaceId;
+    if (!targetSpaceId && workspaceId) {
+      // Find or create default space for workspace
+      let space = await prisma.space.findFirst({
+        where: { workspaceId },
+      });
+      if (!space) {
+        space = await prisma.space.create({
+          data: {
+            workspaceId,
+            name: 'General Space',
+            color: '#7B68EE',
+            icon: 'folder',
+          },
+        });
+      }
+      targetSpaceId = space.id;
+    }
+
+    if (!targetSpaceId) {
+      return res.status(400).json({ error: 'spaceId or workspaceId is required' });
     }
 
     const sanitizedKey = key.toUpperCase().trim();
 
     const existing = await prisma.project.findFirst({
-      where: { workspaceId, key: sanitizedKey },
+      where: { spaceId: targetSpaceId, key: sanitizedKey },
     });
 
     if (existing) {
-      return res.status(409).json({ error: `Project key '${sanitizedKey}' already in use in this workspace` });
+      return res.status(409).json({ error: `Project key '${sanitizedKey}' already in use in this space` });
     }
 
     const project = await prisma.project.create({
       data: {
-        workspaceId,
+        spaceId: targetSpaceId,
         name,
         key: sanitizedKey,
         description,
         color,
         icon,
-        columns: {
-          create: [
-            { name: 'Backlog', color: '#94a3b8', order: 0, isCompleted: false },
-            { name: 'To Do', color: '#3b82f6', order: 1, isCompleted: false },
-            { name: 'In Progress', color: '#8b5cf6', order: 2, isCompleted: false },
-            { name: 'In Review', color: '#ec4899', order: 3, isCompleted: false },
-            { name: 'Done', color: '#10b981', order: 4, isCompleted: true },
-          ],
+        lists: {
+          create: {
+            name: 'Default List',
+            columns: {
+              create: [
+                { name: 'To Do', color: '#3b82f6', order: 0, isCompleted: false },
+                { name: 'In Progress', color: '#8b5cf6', order: 1, isCompleted: false },
+                { name: 'In Review', color: '#ec4899', order: 2, isCompleted: false },
+                { name: 'Done', color: '#10b981', order: 3, isCompleted: true },
+              ],
+            },
+          },
         },
       },
       include: {
-        columns: { orderBy: { order: 'asc' } },
+        lists: {
+          include: {
+            columns: { orderBy: { order: 'asc' } },
+          },
+        },
       },
     });
 
@@ -148,7 +193,11 @@ export const updateProject = async (req: Request, res: Response) => {
         ...(icon ? { icon } : {}),
       },
       include: {
-        columns: { orderBy: { order: 'asc' } },
+        lists: {
+          include: {
+            columns: { orderBy: { order: 'asc' } },
+          },
+        },
       },
     });
 
@@ -177,8 +226,19 @@ export const createColumn = async (req: Request, res: Response) => {
     const { projectId } = req.params;
     const { name, color = '#94a3b8', isCompleted = false } = req.body;
 
-    const lastCol = await prisma.boardColumn.findFirst({
+    // Get the first list in the project or create one
+    let list = await prisma.taskList.findFirst({
       where: { projectId },
+    });
+
+    if (!list) {
+      list = await prisma.taskList.create({
+        data: { projectId, name: 'Main Tasks' },
+      });
+    }
+
+    const lastCol = await prisma.boardColumn.findFirst({
+      where: { listId: list.id },
       orderBy: { order: 'desc' },
     });
 
@@ -186,7 +246,7 @@ export const createColumn = async (req: Request, res: Response) => {
 
     const column = await prisma.boardColumn.create({
       data: {
-        projectId,
+        listId: list.id,
         name,
         color,
         isCompleted,
@@ -217,9 +277,14 @@ export const updateColumn = async (req: Request, res: Response) => {
         ...(color ? { color } : {}),
         ...(isCompleted !== undefined ? { isCompleted } : {}),
       },
+      include: {
+        list: true,
+      },
     });
 
-    emitToProject(column.projectId, 'column:updated', column);
+    if (column.list?.projectId) {
+      emitToProject(column.list.projectId, 'column:updated', column);
+    }
     return res.status(200).json({ column });
   } catch (error) {
     console.error('updateColumn error:', error);
@@ -230,7 +295,7 @@ export const updateColumn = async (req: Request, res: Response) => {
 export const reorderColumns = async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
-    const { columnIds } = req.body; // array of column IDs in new order
+    const { columnIds } = req.body;
 
     if (!Array.isArray(columnIds)) {
       return res.status(400).json({ error: 'columnIds must be an array' });
@@ -256,11 +321,16 @@ export const reorderColumns = async (req: Request, res: Response) => {
 export const deleteColumn = async (req: Request, res: Response) => {
   try {
     const { columnId } = req.params;
-    const column = await prisma.boardColumn.findUnique({ where: { id: columnId } });
+    const column = await prisma.boardColumn.findUnique({
+      where: { id: columnId },
+      include: { list: true },
+    });
     if (!column) return res.status(404).json({ error: 'Column not found' });
 
     await prisma.boardColumn.delete({ where: { id: columnId } });
-    emitToProject(column.projectId, 'column:deleted', { columnId });
+    if (column.list?.projectId) {
+      emitToProject(column.list.projectId, 'column:deleted', { columnId });
+    }
     return res.status(200).json({ message: 'Column deleted successfully' });
   } catch (error) {
     console.error('deleteColumn error:', error);

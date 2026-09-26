@@ -131,7 +131,11 @@ export const deleteComment = async (req: Request, res: Response) => {
     const comment = await prisma.comment.findUnique({
       where: { id: commentId },
       include: {
-        task: { select: { projectId: true } },
+        task: {
+          select: {
+            list: { select: { projectId: true } },
+          },
+        },
       },
     });
 
@@ -144,10 +148,13 @@ export const deleteComment = async (req: Request, res: Response) => {
 
     await prisma.comment.delete({ where: { id: commentId } });
 
-    emitToProject(comment.task.projectId, 'comment:deleted', {
-      taskId: comment.taskId,
-      commentId,
-    });
+    const projectId = (comment as any).task?.list?.projectId;
+    if (projectId) {
+      emitToProject(projectId, 'comment:deleted', {
+        taskId: comment.taskId,
+        commentId,
+      });
+    }
 
     return res.status(200).json({ message: 'Comment deleted successfully' });
   } catch (error) {

@@ -13,7 +13,13 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
 
     const baseWhere: any = {};
     if (workspaceId) {
-      baseWhere.project = { workspaceId: String(workspaceId) };
+      baseWhere.list = {
+        project: {
+          space: {
+            workspaceId: String(workspaceId),
+          },
+        },
+      };
     }
 
     // 1. My Assigned Tasks
@@ -23,7 +29,11 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
         assignees: { some: { userId: req.user.id } },
       },
       include: {
-        project: { select: { name: true, key: true, color: true } },
+        list: {
+          include: {
+            project: { select: { name: true, key: true, color: true } },
+          },
+        },
         column: { select: { name: true, color: true, isCompleted: true } },
       },
       orderBy: { dueDate: 'asc' },
@@ -136,26 +146,34 @@ export const getProjectBurndown = async (req: Request, res: Response) => {
     const project = await prisma.project.findUnique({
       where: { id: projectId },
       include: {
-        tasks: {
-          include: { column: true },
+        lists: {
+          include: {
+            tasks: {
+              include: { column: true },
+            },
+          },
         },
       },
     });
 
     if (!project) return res.status(404).json({ error: 'Project not found' });
 
+    const allTasks = project.lists.flatMap((l) => l.tasks);
+
     // Generate 14-day burndown simulation / trajectory
     const days = 14;
-    const totalPoints = project.tasks.length || 10;
-    const completedNow = project.tasks.filter((t) => t.column.isCompleted).length;
+    const totalPoints = allTasks.length || 10;
+    const completedNow = allTasks.filter((t) => t.column.isCompleted).length;
 
     const dataPoints = [];
     const now = new Date();
 
     for (let i = days - 1; i >= 0; i--) {
       const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-      const idealRemaining = Math.max(0, Math.round(totalPoints - ((days - 1 - i) / (days - 1)) * totalPoints));
-      // Actual remaining progresses towards totalPoints - completedNow
+      const idealRemaining = Math.max(
+        0,
+        Math.round(totalPoints - ((days - 1 - i) / (days - 1)) * totalPoints)
+      );
       const progressRatio = (days - 1 - i) / (days - 1);
       const actualRemaining = Math.max(
         totalPoints - completedNow,
@@ -172,12 +190,12 @@ export const getProjectBurndown = async (req: Request, res: Response) => {
 
     return res.status(200).json({
       projectId,
-      totalTasks: project.tasks.length,
+      totalTasks: allTasks.length,
       completedTasks: completedNow,
       burndown: dataPoints,
     });
   } catch (error) {
     console.error('getProjectBurndown error:', error);
-    return res.status(500).json({ error: 'Failed to generate burndown chart data' });
+    return res.status(500).json({ error: 'Failed to calculate burndown chart' });
   }
 };
