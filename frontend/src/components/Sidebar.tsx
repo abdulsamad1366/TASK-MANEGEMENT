@@ -16,17 +16,21 @@ import {
   Rocket,
   FolderPlus,
   Layers,
+  User,
+  Globe,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface SidebarProps {
-  currentTab: 'dashboard' | 'project' | 'settings';
+  currentTab: 'dashboard' | 'project' | 'settings' | 'global-tasks';
   spaces: Space[];
   selectedSpaceId: string | null;
   selectedProjectId: string | null;
   selectedListId: string | null;
   activeWorkspace: Workspace | null;
-  onSelectTab: (tab: 'dashboard' | 'project' | 'settings') => void;
+  onSelectTab: (tab: 'dashboard' | 'project' | 'settings' | 'global-tasks') => void;
   onSelectSpace: (spaceId: string) => void;
   onSelectProject: (projectId: string) => void;
   onSelectList: (listId: string) => void;
@@ -63,6 +67,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
     ...(spaces[0]?.projects?.[0]?.id ? { [spaces[0].projects[0].id]: true } : {}),
   });
 
+  const [copiedCode, setCopiedCode] = useState(false);
+
+  const handleCopyInviteCode = (e: React.MouseEvent, code: string) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(code);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
+
   const toggleSpace = (spaceId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setExpandedSpaces((prev) => ({ ...prev, [spaceId]: !prev[spaceId] }));
@@ -76,7 +89,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside className="w-64 border-r border-slate-200/80 bg-white flex flex-col justify-between p-3.5 h-[calc(100vh-64px)] overflow-y-auto select-none">
       <div className="space-y-5">
-        {/* Core Navigation: Dashboard & My Tasks */}
+        {/* Core Navigation: Dashboard & Global My Tasks */}
         <div className="space-y-1">
           <button
             onClick={() => onSelectTab('dashboard')}
@@ -89,6 +102,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             <LayoutDashboard className="w-4 h-4 text-[#7B68EE]" />
             <span>Dashboard & Overview</span>
+          </button>
+
+          <button
+            onClick={() => onSelectTab('global-tasks')}
+            className={cn(
+              'w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition',
+              currentTab === 'global-tasks'
+                ? 'bg-purple-50 text-[#7B68EE]'
+                : 'text-slate-600 hover:bg-slate-50'
+            )}
+          >
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>Global My Tasks</span>
+            </div>
+            <span className="text-[10px] bg-slate-100 text-slate-500 font-bold px-1.5 py-0.5 rounded-full">
+              All Workspaces
+            </span>
           </button>
         </div>
 
@@ -299,12 +330,57 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* Footer Workspace Info */}
-      <div className="pt-3 border-t border-slate-100 text-[11px] text-slate-400 px-1 flex items-center justify-between">
-        <span className="truncate font-medium text-slate-600">{activeWorkspace?.name}</span>
-        <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-purple-50 text-[#7B68EE] font-bold">
-          FLOWDESK
-        </span>
+      {/* Footer Multi-Tenant Workspace Info */}
+      <div className="pt-3 border-t border-slate-200/80 px-1 space-y-2">
+        <div className="flex items-center justify-between text-[11px]">
+          <div className="flex items-center gap-1.5 min-w-0">
+            {activeWorkspace?.type === 'PERSONAL' ? (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-semibold text-[10px] border border-emerald-200/60">
+                <User className="w-2.5 h-2.5" />
+                Personal
+              </span>
+            ) : activeWorkspace?.type === 'COMMUNITY' ? (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-sky-50 text-sky-700 font-semibold text-[10px] border border-sky-200/60">
+                <Globe className="w-2.5 h-2.5" />
+                Community
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-purple-50 text-[#7B68EE] font-semibold text-[10px] border border-purple-200/60">
+                <Users className="w-2.5 h-2.5" />
+                Team
+              </span>
+            )}
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              {activeWorkspace?.plan || 'PRO'}
+            </span>
+          </div>
+          <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-bold">
+            FLOWDESK
+          </span>
+        </div>
+
+        {/* Invite Code Quick Copy if present */}
+        {activeWorkspace?.inviteCode && (
+          <button
+            type="button"
+            onClick={(e) => handleCopyInviteCode(e, activeWorkspace.inviteCode!)}
+            title="Click to copy workspace invite code"
+            className="w-full flex items-center justify-between px-2 py-1 rounded-lg bg-slate-50 hover:bg-purple-50 border border-slate-200/60 text-[10px] text-slate-600 hover:text-[#7B68EE] transition group"
+          >
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-slate-400 font-mono">Code:</span>
+              <span className="font-mono font-bold truncate">{activeWorkspace.inviteCode}</span>
+            </div>
+            {copiedCode ? (
+              <span className="text-emerald-600 font-bold text-[9px] flex items-center gap-0.5">
+                <Check className="w-3 h-3" />
+                Copied
+              </span>
+            ) : (
+              <Copy className="w-3 h-3 text-slate-400 group-hover:text-[#7B68EE] transition" />
+            )}
+          </button>
+        )}
       </div>
     </aside>
   );

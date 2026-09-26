@@ -55,7 +55,7 @@ export const uploadAttachment = async (req: Request, res: Response) => {
     const attachment = await prisma.attachment.create({
       data: {
         taskId,
-        uploadedById: req.user.id,
+        userId: req.user.id,
         fileName: processed.fileName,
         fileUrl: processed.fileUrl,
         fileType: processed.fileType,
@@ -63,7 +63,7 @@ export const uploadAttachment = async (req: Request, res: Response) => {
         isImage,
       },
       include: {
-        uploadedBy: {
+        user: {
           select: { id: true, name: true, avatarUrl: true },
         },
       },

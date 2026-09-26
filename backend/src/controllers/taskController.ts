@@ -151,7 +151,7 @@ export const getTask = async (req: Request, res: Response) => {
         attachments: {
           orderBy: { createdAt: 'desc' },
           include: {
-            uploadedBy: {
+            user: {
               select: { id: true, name: true, avatarUrl: true },
             },
           },
@@ -166,14 +166,14 @@ export const getTask = async (req: Request, res: Response) => {
         },
         blocking: {
           include: {
-            dependsOnTask: {
+            blockedTask: {
               select: { id: true, title: true, taskNumber: true, priority: true, column: true },
             },
           },
         },
         blockedBy: {
           include: {
-            task: {
+            blockingTask: {
               select: { id: true, title: true, taskNumber: true, priority: true, column: true },
             },
           },
@@ -185,7 +185,14 @@ export const getTask = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Task not found' });
     }
 
-    return res.status(200).json({ task });
+    const transformedTask = {
+      ...task,
+      blockedBy: task.blockedBy.map((b) => ({ ...b, task: b.blockingTask, dependsOnTask: b.blockingTask })),
+      blocking: task.blocking.map((b) => ({ ...b, task: b.blockedTask, dependsOnTask: b.blockedTask })),
+      attachments: task.attachments.map((a) => ({ ...a, uploadedBy: a.user })),
+    };
+
+    return res.status(200).json({ task: transformedTask });
   } catch (error) {
     console.error('getTask error:', error);
     return res.status(500).json({ error: 'Failed to fetch task details' });
@@ -244,18 +251,22 @@ export const createTask = async (req: Request, res: Response) => {
       targetListId = anyList.id;
     }
 
-    // Get list details with project
+    // Get list details with project and space
     const targetList = await prisma.taskList.findUnique({
       where: { id: targetListId },
       include: {
         columns: { orderBy: { order: 'asc' } },
-        project: true,
+        project: {
+          include: { space: true },
+        },
       },
     });
 
     if (!targetList) {
       return res.status(404).json({ error: 'Target list not found' });
     }
+
+    const targetWorkspaceId = targetList.project.space.workspaceId;
 
     // Determine target column
     let targetColId = columnId;
@@ -285,6 +296,7 @@ export const createTask = async (req: Request, res: Response) => {
 
     const task = await prisma.task.create({
       data: {
+        workspaceId: targetWorkspaceId,
         listId: targetListId,
         columnId: targetColId,
         taskNumber,
@@ -311,7 +323,7 @@ export const createTask = async (req: Request, res: Response) => {
         },
         attachments: {
           create: (initialAttachments as any[]).map((att) => ({
-            uploadedById: req.user!.id,
+            userId: req.user!.id,
             fileName: att.fileName,
             fileUrl: att.fileUrl,
             fileType: att.fileType || 'application/octet-stream',
@@ -389,7 +401,6 @@ export const createTask = async (req: Request, res: Response) => {
             type: 'ASSIGNMENT',
             title: 'Assigned to New Task',
             message: `${req.user.name} assigned you to ${task.list.project.key}-${task.taskNumber}: ${task.title}`,
-            entityType: 'TASK',
             entityId: task.id,
           },
         });
@@ -484,7 +495,6 @@ export const updateTask = async (req: Request, res: Response) => {
             type: 'ASSIGNMENT',
             title: 'Assigned to Task',
             message: `${req.user.name} assigned you to ${existingTask.list.project.key}-${existingTask.taskNumber}: ${existingTask.title}`,
-            entityType: 'TASK',
             entityId: id,
           },
         });
@@ -659,6 +669,7 @@ export const moveTask = async (req: Request, res: Response) => {
 
           await prisma.task.create({
             data: {
+              workspaceId: currentTask.workspaceId,
               listId: currentTask.listId,
               columnId: firstCol.id,
               taskNumber: 100 + count + 1,
@@ -874,17 +885,23 @@ export const addDependency = async (req: Request, res: Response) => {
 
     const dependency = await prisma.taskDependency.create({
       data: {
-        taskId,
-        dependsOnTaskId,
+        blockingTaskId: dependsOnTaskId,
+        blockedTaskId: taskId,
       },
       include: {
-        dependsOnTask: {
+        blockingTask: {
           select: { id: true, title: true, taskNumber: true, priority: true },
         },
       },
     });
 
-    return res.status(201).json({ dependency });
+    return res.status(201).json({
+      dependency: {
+        ...dependency,
+        task: dependency.blockingTask,
+        dependsOnTask: dependency.blockingTask,
+      },
+    });
   } catch (error) {
     return res.status(500).json({ error: 'Failed to add dependency' });
   }
@@ -896,9 +913,9 @@ export const removeDependency = async (req: Request, res: Response) => {
 
     await prisma.taskDependency.delete({
       where: {
-        taskId_dependsOnTaskId: {
-          taskId,
-          dependsOnTaskId,
+        blockingTaskId_blockedTaskId: {
+          blockingTaskId: dependsOnTaskId,
+          blockedTaskId: taskId,
         },
       },
     });
@@ -906,5 +923,50 @@ export const removeDependency = async (req: Request, res: Response) => {
     return res.status(200).json({ message: 'Dependency removed' });
   } catch (error) {
     return res.status(500).json({ error: 'Failed to remove dependency' });
+  }
+};
+
+export const getMyTasks = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const tasks = await prisma.task.findMany({
+      where: {
+        assignees: { some: { userId: req.user.id } },
+      },
+      include: {
+        workspace: {
+          select: { id: true, name: true, slug: true, type: true, logoUrl: true },
+        },
+        list: {
+          include: {
+            project: {
+              select: { id: true, name: true, key: true, color: true },
+            },
+          },
+        },
+        column: {
+          select: { id: true, name: true, color: true, isCompleted: true },
+        },
+        assignees: {
+          include: {
+            user: { select: { id: true, name: true, email: true, avatarUrl: true } },
+          },
+        },
+        subtasks: true,
+        _count: {
+          select: { comments: true, attachments: true },
+        },
+      },
+      orderBy: [
+        { dueDate: 'asc' },
+        { createdAt: 'desc' },
+      ],
+    });
+
+    return res.status(200).json({ tasks });
+  } catch (error) {
+    console.error('getMyTasks error:', error);
+    return res.status(500).json({ error: 'Failed to fetch user tasks' });
   }
 };

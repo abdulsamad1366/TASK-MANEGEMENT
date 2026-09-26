@@ -30,15 +30,18 @@ import { ProjectCreateModal } from '../components/ProjectCreateModal';
 import { ListCreateModal } from '../components/ListCreateModal';
 import { InviteMemberModal } from '../components/InviteMemberModal';
 import { GlobalSearchModal } from '../components/GlobalSearchModal';
+import { WorkspaceCreateModal } from '../components/WorkspaceCreateModal';
+import { GlobalTasksView } from '../components/GlobalTasksView';
 import { AuthModal } from '../components/AuthModal';
 import { Sparkles, Plus, Layers, Folder, ListTodo } from 'lucide-react';
 
 export default function Home() {
-  const { user, activeWorkspace, isLoading: isAuthLoading } = useAuth();
+  const { user, activeWorkspace, isLoading: isAuthLoading, refreshUser, setActiveWorkspace } = useAuth();
 
   // Navigation & View state
-  const [currentTab, setCurrentTab] = useState<'dashboard' | 'project' | 'settings'>('project');
+  const [currentTab, setCurrentTab] = useState<'dashboard' | 'project' | 'settings' | 'global-tasks'>('project');
   const [currentView, setCurrentView] = useState<BoardView>('kanban');
+  const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
 
   // ClickUp Hierarchy State: Spaces > Projects > Lists
   const [spaces, setSpaces] = useState<Space[]>([]);
@@ -369,6 +372,7 @@ export default function Home() {
         onOpenSearch={() => setIsSearchOpen(true)}
         onOpenSettings={() => setCurrentTab('settings')}
         onSelectTask={(tId) => setActiveTaskId(tId)}
+        onOpenCreateWorkspace={() => setIsWorkspaceModalOpen(true)}
       />
 
       {/* Main Workspace Layout */}
@@ -414,6 +418,8 @@ export default function Home() {
               projects={allProjects}
               onSelectTask={(t) => setActiveTaskId(t.id)}
             />
+          ) : currentTab === 'global-tasks' ? (
+            <GlobalTasksView onSelectTask={(t) => setActiveTaskId(t.id)} />
           ) : currentTab === 'settings' && activeWorkspace ? (
             <SettingsView
               workspace={activeWorkspace}
@@ -635,6 +641,17 @@ export default function Home() {
           setSelectedProjectId(pId);
           loadProjectDetails(pId);
           setCurrentTab('project');
+        }}
+      />
+
+      {/* 8. Create or Join Workspace Modal */}
+      <WorkspaceCreateModal
+        isOpen={isWorkspaceModalOpen}
+        onClose={() => setIsWorkspaceModalOpen(false)}
+        onWorkspaceCreated={async (newWs) => {
+          setIsWorkspaceModalOpen(false);
+          await refreshUser();
+          setActiveWorkspace(newWs);
         }}
       />
     </div>

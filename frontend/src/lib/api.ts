@@ -86,6 +86,9 @@ class ApiClient {
   getWorkspaces = () => this.request<any>('/workspaces');
   getWorkspace = (id: string) => this.request<any>(`/workspaces/${id}`);
   createWorkspace = (data: any) => this.request<any>('/workspaces', { method: 'POST', body: JSON.stringify(data) });
+  joinWorkspace = (data: { inviteCode?: string; workspaceId?: string; slug?: string }) =>
+    this.request<any>('/workspaces/join', { method: 'POST', body: JSON.stringify(data) });
+  getMyGlobalTasks = () => this.request<{ tasks: any[] }>('/tasks/my-tasks');
   updateWorkspace = (id: string, data: any) =>
     this.request<any>(`/workspaces/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
   inviteMember = (workspaceId: string, data: { email: string; role: string }) =>

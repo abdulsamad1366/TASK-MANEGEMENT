@@ -90,17 +90,33 @@ export const createWorkspace = async (req: Request, res: Response) => {
   try {
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
 
-    const { name, description, logoUrl } = req.body;
+    const {
+      name,
+      description,
+      logoUrl,
+      type = 'TEAM',
+      joinPolicy = type === 'COMMUNITY' ? 'PUBLIC_LINK' : 'INVITE_ONLY',
+      plan = 'FREE',
+    } = req.body;
+
     if (!name) return res.status(400).json({ error: 'Workspace name is required' });
 
     const baseSlug = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
     const slug = `${baseSlug}-${Date.now().toString().slice(-4)}`;
+    const inviteCode =
+      type === 'COMMUNITY'
+        ? `COMMUNITY-${baseSlug.toUpperCase().slice(0, 10)}-${Math.floor(1000 + Math.random() * 9000)}`
+        : `INV-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
     const workspace = await prisma.workspace.create({
       data: {
         name,
         slug,
         description,
+        type,
+        joinPolicy,
+        plan,
+        inviteCode,
         logoUrl: logoUrl || `https://api.dicebear.com/7.x/identicon/svg?seed=${slug}`,
         ownerId: req.user.id,
         members: {
@@ -109,12 +125,50 @@ export const createWorkspace = async (req: Request, res: Response) => {
             role: 'ADMIN',
           },
         },
+        spaces: {
+          create: {
+            name: type === 'PERSONAL' ? 'Personal Life & Focus' : type === 'COMMUNITY' ? 'Community Hub' : 'General Space',
+            color: '#7B68EE',
+            icon: type === 'PERSONAL' ? 'user' : type === 'COMMUNITY' ? 'users' : 'folder',
+            projects: {
+              create: {
+                name: type === 'PERSONAL' ? 'Personal Tasks' : type === 'COMMUNITY' ? 'Community Projects' : 'Core Tasks',
+                key: type === 'PERSONAL' ? 'ME' : type === 'COMMUNITY' ? 'HUB' : 'CORE',
+                description: 'Default project to start organizing tasks immediately',
+                lists: {
+                  create: {
+                    name: 'Sprint 1',
+                    columns: {
+                      create: [
+                        { name: 'To Do', color: '#94A3B8', order: 0, isCompleted: false },
+                        { name: 'In Progress', color: '#7B68EE', order: 1, isCompleted: false },
+                        { name: 'In Review', color: '#F59E0B', order: 2, isCompleted: false },
+                        { name: 'Done', color: '#10B981', order: 3, isCompleted: true },
+                      ],
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
       include: {
         members: {
           include: {
             user: {
               select: { id: true, name: true, email: true, avatarUrl: true },
+            },
+          },
+        },
+        spaces: {
+          include: {
+            projects: {
+              include: {
+                lists: {
+                  include: { columns: true },
+                },
+              },
             },
           },
         },
@@ -128,10 +182,96 @@ export const createWorkspace = async (req: Request, res: Response) => {
   }
 };
 
+export const joinWorkspace = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { inviteCode, workspaceId, slug } = req.body;
+
+    let workspace = null;
+    if (inviteCode) {
+      workspace = await prisma.workspace.findFirst({
+        where: { inviteCode: inviteCode.trim().toUpperCase() },
+        include: { members: true },
+      });
+    } else if (workspaceId) {
+      workspace = await prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        include: { members: true },
+      });
+    } else if (slug) {
+      workspace = await prisma.workspace.findUnique({
+        where: { slug },
+        include: { members: true },
+      });
+    }
+
+    if (!workspace) {
+      return res.status(404).json({ error: 'Workspace not found or invalid invite code' });
+    }
+
+    // Check if user is already a member
+    const isMember = workspace.members.some((m) => m.userId === req.user!.id);
+    if (isMember) {
+      return res.status(200).json({
+        message: 'Already a member of this workspace',
+        workspace,
+      });
+    }
+
+    // Check join policy: Personal workspaces cannot be joined
+    if (workspace.type === 'PERSONAL') {
+      return res.status(403).json({ error: 'Personal workspaces cannot be joined by other users' });
+    }
+
+    // If Team and invite-only without inviteCode match, deny
+    if (workspace.type === 'TEAM' && workspace.joinPolicy === 'INVITE_ONLY' && !inviteCode) {
+      return res.status(403).json({ error: 'This workspace is invite-only' });
+    }
+
+    // Add user as MEMBER
+    await prisma.workspaceMember.create({
+      data: {
+        workspaceId: workspace.id,
+        userId: req.user.id,
+        role: 'MEMBER',
+      },
+    });
+
+    const updatedWorkspace = await prisma.workspace.findUnique({
+      where: { id: workspace.id },
+      include: {
+        members: {
+          include: {
+            user: { select: { id: true, name: true, email: true, avatarUrl: true } },
+          },
+        },
+        spaces: {
+          include: {
+            projects: {
+              include: {
+                lists: { include: { columns: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return res.status(200).json({
+      message: `Successfully joined ${workspace.name}!`,
+      workspace: updatedWorkspace,
+    });
+  } catch (error) {
+    console.error('joinWorkspace error:', error);
+    return res.status(500).json({ error: 'Failed to join workspace' });
+  }
+};
+
 export const updateWorkspace = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, description, logoUrl } = req.body;
+    const { name, description, logoUrl, type, joinPolicy, plan } = req.body;
 
     const workspace = await prisma.workspace.update({
       where: { id },
@@ -139,6 +279,9 @@ export const updateWorkspace = async (req: Request, res: Response) => {
         ...(name ? { name } : {}),
         ...(description !== undefined ? { description } : {}),
         ...(logoUrl !== undefined ? { logoUrl } : {}),
+        ...(type ? { type } : {}),
+        ...(joinPolicy ? { joinPolicy } : {}),
+        ...(plan ? { plan } : {}),
       },
     });
 
@@ -194,11 +337,10 @@ export const inviteMember = async (req: Request, res: Response) => {
       await prisma.notification.create({
         data: {
           userId: existingUser.id,
-          actorId: req.user?.id,
+          actorId: req.user?.id || existingUser.id,
           type: 'ASSIGNMENT',
           title: 'Added to Workspace',
           message: `You were added to the workspace as ${role}`,
-          entityType: 'WORKSPACE',
           entityId: workspaceId,
         },
       });

@@ -3,6 +3,9 @@ export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 export type RecurrenceRule = 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY';
 export type NotificationType = 'ASSIGNMENT' | 'MENTION' | 'DUE_DATE' | 'COMMENT' | 'STATUS_CHANGE';
 export type BoardView = 'kanban' | 'list' | 'calendar' | 'timeline';
+export type WorkspaceType = 'PERSONAL' | 'COMMUNITY' | 'TEAM';
+export type WorkspaceJoinPolicy = 'INVITE_ONLY' | 'PUBLIC_LINK' | 'REQUEST_TO_JOIN';
+export type WorkspacePlan = 'FREE' | 'PRO' | 'ENTERPRISE';
 
 export interface User {
   id: string;
@@ -17,6 +20,7 @@ export interface User {
     name: string;
     slug: string;
     role: Role;
+    type?: WorkspaceType;
     logoUrl?: string;
   }[];
 }
@@ -42,6 +46,10 @@ export interface Workspace {
   slug: string;
   description?: string | null;
   logoUrl?: string | null;
+  type: WorkspaceType;
+  joinPolicy?: WorkspaceJoinPolicy;
+  plan?: WorkspacePlan;
+  inviteCode?: string | null;
   ownerId: string;
   members?: WorkspaceMember[];
   spaces?: Space[];
@@ -49,7 +57,8 @@ export interface Workspace {
   currentUserRole?: Role;
   _count?: {
     members: number;
-    projects: number;
+    spaces?: number;
+    projects?: number;
   };
 }
 
@@ -203,6 +212,7 @@ export interface TaskDependency {
 
 export interface Task {
   id: string;
+  workspaceId?: string;
   listId?: string;
   projectId?: string;
   columnId: string;
@@ -222,6 +232,13 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
 
+  workspace?: {
+    id: string;
+    name: string;
+    slug: string;
+    type: WorkspaceType;
+    logoUrl?: string | null;
+  };
   list?: TaskList;
   project?: {
     id: string;

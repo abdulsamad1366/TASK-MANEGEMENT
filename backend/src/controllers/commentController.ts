@@ -84,7 +84,6 @@ export const createComment = async (req: Request, res: Response) => {
               type: 'MENTION',
               title: `Mentioned in ${projectKey}-${task.taskNumber}`,
               message: `${req.user.name} mentioned you in chat: "${content.slice(0, 80)}"`,
-              entityType: 'TASK',
               entityId: taskId,
             },
           });
@@ -103,7 +102,6 @@ export const createComment = async (req: Request, res: Response) => {
             type: 'CHAT',
             title: `New chat message on ${projectKey}-${task.taskNumber}`,
             message: `${req.user.name}: "${(content || 'Shared an image').slice(0, 80)}"`,
-            entityType: 'TASK',
             entityId: taskId,
           },
         });

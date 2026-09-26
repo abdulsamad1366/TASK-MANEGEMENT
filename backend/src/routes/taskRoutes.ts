@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   listTasks,
   getTask,
+  getMyTasks,
   createTask,
   updateTask,
   moveTask,
@@ -27,6 +28,7 @@ router.post('/media', upload.single('file'), uploadMedia);
 
 // Tasks CRUD & Move
 router.get('/', listTasks);
+router.get('/my-tasks', getMyTasks);
 router.post('/', createTask);
 router.post('/bulk', bulkUpdateTasks);
 router.get('/:id', getTask);

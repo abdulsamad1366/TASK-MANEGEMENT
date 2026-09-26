@@ -105,6 +105,53 @@ npm run dev
 
 ---
 
+## 🏢 Multi-Tenant Architecture & Supabase Integration
+
+Flowdesk is built around a scalable **Multi-Tenant Workspace Model** where every piece of data is isolated to its respective workspace:
+
+### 1. Workspace Types & Join Policies
+- **Personal**: Single-user private workspace for personal productivity, private notes, and focused task lists.
+- **Team / Group**: Private, invite-only organization workspace with role-based member permissions (`ADMIN`, `MANAGER`, `MEMBER`) and unique workspace invite codes (e.g. `ACME-TEAM-2026`).
+- **Community**: Public or invite-based open communities with open share links (e.g. `COMMUNITY-FLOWDESK-2026`) for open-source contributors and community bounties.
+
+### 2. Global "My Tasks" Aggregation
+Users belonging to multiple workspaces can view all tasks assigned to them across Personal, Team, and Community workspaces from the **Global My Tasks** view in the sidebar.
+
+### 3. Supabase Row Level Security (RLS)
+All database multi-tenancy is enforced at the PostgreSQL database level via Row Level Security (RLS):
+- Every tenant table (`Workspace`, `WorkspaceMember`, `Space`, `Project`, `TaskList`, `BoardColumn`, `Task`, `Comment`, `Attachment`, `ActivityLog`, `Notification`) has RLS enabled.
+- Normalization: `Task.workspaceId` is directly indexed and validated against `WorkspaceMember` lookup, eliminating deep 4-way joins and guaranteeing sub-millisecond policy evaluation.
+- RLS migration file: `backend/prisma/supabase-schema.sql` and `backend/prisma/migrations/01_multi_tenant_rls.sql`.
+
+### 4. Supabase Storage & Realtime
+- **Supabase Storage**: Bucket `attachments` stores image attachments and uploaded files with public read policy and authenticated upload policy.
+- **Supabase Realtime**: Live updates published to `Task`, `Comment`, `Notification`, and `BoardColumn`.
+
+### 5. Supabase Environment Variables
+Configure the following in `backend/.env` and `frontend/.env.local`:
+```bash
+# Backend (.env)
+DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT_REF].supabase.co:5432/postgres"
+SUPABASE_URL="https://[PROJECT_REF].supabase.co"
+SUPABASE_ANON_KEY="[YOUR_ANON_KEY]"
+SUPABASE_SERVICE_ROLE_KEY="[YOUR_SERVICE_ROLE_KEY]"
+
+# Frontend (.env.local)
+NEXT_PUBLIC_SUPABASE_URL="https://[PROJECT_REF].supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="[YOUR_ANON_KEY]"
+NEXT_PUBLIC_API_URL="http://localhost:5001/api"
+```
+
+To run migrations and seed the multi-tenant workspaces:
+```bash
+cd backend
+npx prisma db push
+psql "[DATABASE_URL]" -f prisma/supabase-schema.sql
+npx ts-node prisma/seed.ts
+```
+
+---
+
 ## 🔑 Demo Accounts (Password: `Password123!`)
 
 Click any of the instant 1-click login buttons on the login modal:

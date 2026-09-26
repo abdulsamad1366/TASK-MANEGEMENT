@@ -42,6 +42,24 @@ enum InvitationStatus {
   EXPIRED
 }
 
+enum WorkspaceType {
+  PERSONAL
+  COMMUNITY
+  TEAM
+}
+
+enum WorkspaceJoinPolicy {
+  INVITE_ONLY
+  PUBLIC_LINK
+  REQUEST_TO_JOIN
+}
+
+enum WorkspacePlan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
 model User {
   id                    String              @id @default(cuid())
   email                 String              @unique
@@ -65,19 +83,26 @@ model User {
 }
 
 model Workspace {
-  id          String              @id @default(cuid())
-  name        String
-  slug        String              @unique
-  description String?
-  logoUrl     String?
-  ownerId     String
-  owner       User                @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  id              String              @id @default(cuid())
+  name            String
+  slug            String              @unique
+  description     String?
+  logoUrl         String?
+  type            WorkspaceType       @default(TEAM)
+  joinPolicy      WorkspaceJoinPolicy @default(INVITE_ONLY)
+  plan            WorkspacePlan       @default(FREE)
+  inviteCode      String?             @unique
+  maxMembers      Int                 @default(50)
+  storageLimitMb  Int                 @default(1000)
+  ownerId         String
+  owner           User                @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
 
-  members     WorkspaceMember[]
-  invitations WorkspaceInvitation[]
-  spaces      Space[]
+  members         WorkspaceMember[]
+  invitations     WorkspaceInvitation[]
+  spaces          Space[]
+  tasks           Task[]
 }
 
 model WorkspaceMember {
@@ -106,7 +131,7 @@ model WorkspaceInvitation {
   workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
-// ClickUp Hierarchy: Workspace > Space > Project > List > Task
+// ClickUp / Flowdesk Hierarchy: Workspace > Space > Project > List > Task
 model Space {
   id          String    @id @default(cuid())
   workspaceId String
@@ -169,6 +194,7 @@ model BoardColumn {
 
 model Task {
   id             String          @id @default(cuid())
+  workspaceId    String
   listId         String
   columnId       String
   taskNumber     Int             @default(1)
@@ -178,7 +204,7 @@ model Task {
   order          Float           @default(0)
   startDate      DateTime?
   dueDate        DateTime?
-  timeEstimate   String?         // "2h 30m"
+  timeEstimate   String?         // e.g. "2h 30m"
   coverImage     String?
   labels         String          @default("[]")
   isRecurring    Boolean         @default(false)
@@ -187,6 +213,7 @@ model Task {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
+  workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   list           TaskList        @relation(fields: [listId], references: [id], onDelete: Cascade)
   column         BoardColumn     @relation(fields: [columnId], references: [id], onDelete: Cascade)
   creator        User            @relation("TaskCreator", fields: [creatorId], references: [id], onDelete: Cascade)
@@ -200,17 +227,18 @@ model Task {
   blocking       TaskDependency[] @relation("BlockingTask")
   blockedBy      TaskDependency[] @relation("BlockedByTask")
 
+  @@index([workspaceId])
   @@index([listId, columnId])
 }
 
 model TaskAssignee {
-  id         String   @id @default(cuid())
-  taskId     String
-  userId     String
-  assignedAt DateTime @default(now())
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  createdAt DateTime @default(now())
 
-  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([taskId, userId])
 }
@@ -229,14 +257,14 @@ model Subtask {
 
 model TaskDependency {
   id              String   @id @default(cuid())
-  taskId          String
-  dependsOnTaskId String
+  blockingTaskId  String   // The task that blocks
+  blockedTaskId   String   // The task that is blocked
   createdAt       DateTime @default(now())
 
-  task            Task     @relation("BlockedByTask", fields: [taskId], references: [id], onDelete: Cascade)
-  dependsOnTask   Task     @relation("BlockingTask", fields: [dependsOnTaskId], references: [id], onDelete: Cascade)
+  blockingTask    Task     @relation("BlockingTask", fields: [blockingTaskId], references: [id], onDelete: Cascade)
+  blockedTask     Task     @relation("BlockedByTask", fields: [blockedTaskId], references: [id], onDelete: Cascade)
 
-  @@unique([taskId, dependsOnTaskId])
+  @@unique([blockingTaskId, blockedTaskId])
 }
 
 model Comment {
@@ -244,61 +272,54 @@ model Comment {
   taskId    String
   userId    String
   content   String
-  imageUrl  String?  // In-chat shared image URL
+  imageUrl  String?  // Optional inline image shared in in-task chat
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([taskId])
 }
 
 model Attachment {
-  id           String   @id @default(cuid())
-  taskId       String
-  uploadedById String
-  fileName     String
-  fileUrl      String
-  fileType     String
-  fileSize     Int
-  isImage      Boolean  @default(false)
-  createdAt    DateTime @default(now())
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  fileName  String
+  fileUrl   String
+  fileSize  Int
+  fileType  String
+  isImage   Boolean  @default(false)
+  createdAt DateTime @default(now())
 
-  task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  uploadedBy   User     @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
-
-  @@index([taskId])
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model ActivityLog {
   id        String   @id @default(cuid())
   taskId    String
   userId    String
-  action    String
-  details   String
+  action    String   // CREATED, STATUS_CHANGED, ASSIGNED, UNASSIGNED, EDITED, DUE_DATE_CHANGED, PRIORITY_CHANGED, ATTACHMENT_ADDED
+  details   String?  // JSON string
   createdAt DateTime @default(now())
 
   task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([taskId])
 }
 
 model Notification {
-  id         String           @id @default(cuid())
-  userId     String
-  actorId    String?
-  type       NotificationType
-  title      String
-  message    String
-  entityType String?
-  entityId   String?
-  isRead     Boolean          @default(false)
-  createdAt  DateTime         @default(now())
+  id        String           @id @default(cuid())
+  userId    String           // recipient
+  actorId   String           // user who triggered the notification
+  type      NotificationType
+  title     String
+  message   String
+  entityId  String?          // taskId or projectId
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
 
-  user       User             @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
-  actor      User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  user      User             @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  actor     User             @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
 
   @@index([userId, isRead])
 }

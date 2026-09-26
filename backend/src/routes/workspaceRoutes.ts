@@ -3,6 +3,7 @@ import {
   listWorkspaces,
   getWorkspace,
   createWorkspace,
+  joinWorkspace,
   updateWorkspace,
   inviteMember,
   updateMemberRole,
@@ -17,6 +18,7 @@ router.use(authenticate);
 
 router.get('/', listWorkspaces);
 router.post('/', createWorkspace);
+router.post('/join', joinWorkspace);
 router.get('/:id', getWorkspace);
 router.patch('/:id', requireWorkspaceRole(['ADMIN']), updateWorkspace);
 router.post('/:id/invite', requireWorkspaceRole(['ADMIN', 'MANAGER']), inviteMember);
