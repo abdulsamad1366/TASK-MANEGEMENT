@@ -636,7 +636,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                               {initial}
                             </span>
                           )}
-                          <span className="truncate max-w-[120px]">{displayName}</span>
+                          <span className="truncate max-w-30">{displayName}</span>
                           <button
                             type="button"
                             onClick={() => handleToggleAssignee(a.userId)}

@@ -220,7 +220,7 @@ export const joinWorkspace = async (req: Request, res: Response) => {
     }
 
     // Check if user is already a member
-    const isMember = workspace.members.some((m) => m.userId === req.user!.id);
+    const isMember = (workspace as any).members?.some((m: any) => m.userId === req.user!.id);
     if (isMember) {
       return res.status(200).json({
         message: 'Already a member of this workspace',
@@ -784,7 +784,7 @@ export const createJoinRequest = async (req: Request, res: Response) => {
     }
 
     // Check if user is already a member
-    const isMember = workspace.members.some((m) => m.userId === req.user!.id);
+    const isMember = (workspace as any).members?.some((m: any) => m.userId === req.user!.id);
     if (isMember) {
       return res.status(200).json({
         alreadyMember: true,
@@ -843,7 +843,7 @@ export const createJoinRequest = async (req: Request, res: Response) => {
     });
 
     // Notify workspace Admins
-    const admins = workspace.members.filter((m) => m.role === 'ADMIN');
+    const admins = ((workspace as any).members || []).filter((m: any) => m.role === 'ADMIN');
     for (const admin of admins) {
       await prisma.notification.create({
         data: {

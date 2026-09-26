@@ -75,7 +75,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-md animate-fadeIn select-none p-3 sm:p-6"
+      className="fixed inset-0 z-100 flex items-center justify-center bg-black/85 backdrop-blur-md animate-fadeIn select-none p-3 sm:p-6"
       onClick={onClose}
     >
       {/* Top Controls Bar */}
@@ -84,7 +84,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Title / Filename */}
-        <div className="pointer-events-auto bg-black/60 backdrop-blur-md border border-white/10 text-white text-xs px-3.5 py-1.5 rounded-full font-medium truncate max-w-[280px] sm:max-w-md shadow-lg">
+        <div className="pointer-events-auto bg-black/60 backdrop-blur-md border border-white/10 text-white text-xs px-3.5 py-1.5 rounded-full font-medium truncate max-w-70 sm:max-w-md shadow-lg">
           {title || 'Image Preview'}
         </div>
 
