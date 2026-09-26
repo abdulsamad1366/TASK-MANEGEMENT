@@ -23,8 +23,10 @@ import {
   Download,
   Maximize2,
   Sparkles,
+  Search,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { ImagePreviewModal } from './ImagePreviewModal';
 
 interface TaskModalProps {
   taskId: string | null;
@@ -79,7 +81,16 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const coverInputRef = useRef<HTMLInputElement>(null);
 
   // Lightbox preview for images
-  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ url: string; title?: string } | null>(null);
+  const [assigneeSearch, setAssigneeSearch] = useState('');
+
+  const filteredWorkspaceMembers = workspaceMembers.filter((m) => {
+    if (!m) return false;
+    const name = m.user?.name?.toLowerCase() || '';
+    const email = m.user?.email?.toLowerCase() || '';
+    const q = assigneeSearch.trim().toLowerCase();
+    return !q || name.includes(q) || email.includes(q);
+  });
 
   // Assignees Dropdown state
   const [isAssigneePickerOpen, setIsAssigneePickerOpen] = useState(false);
@@ -374,8 +385,22 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         {/* Cover Image Banner (if available) */}
         {coverImage && (
           <div className="relative w-full h-40 bg-slate-100 overflow-hidden group border-b border-slate-200">
-            <img src={coverImage} alt="Task Cover" className="w-full h-full object-cover" />
-            <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition">
+            <img
+              src={coverImage}
+              alt="Task Cover"
+              className="w-full h-full object-cover cursor-pointer hover:opacity-95 transition"
+              onClick={() => setPreviewImage({ url: coverImage, title: `${task?.title || 'Task'} - Cover Image` })}
+            />
+            <div className="absolute top-3 right-3 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition">
+              <button
+                type="button"
+                onClick={() => setPreviewImage({ url: coverImage, title: `${task?.title || 'Task'} - Cover Image` })}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-black/60 text-white text-xs font-medium hover:bg-black/80 transition"
+                title="Preview Cover"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+                <span>Preview</span>
+              </button>
               <button
                 type="button"
                 onClick={() => coverInputRef.current?.click()}
@@ -592,32 +617,37 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                   </div>
 
                   <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                    {task?.assignees?.map((a) => (
-                      <span
-                        key={a.id}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-medium text-slate-700"
-                      >
-                        {a.user.avatarUrl ? (
-                          <img
-                            src={a.user.avatarUrl}
-                            alt={a.user.name}
-                            className="w-4 h-4 rounded-full object-cover"
-                          />
-                        ) : (
-                          <span className="w-4 h-4 rounded-full bg-[#7B68EE] text-white text-[9px] flex items-center justify-center font-bold">
-                            {a.user.name.charAt(0)}
-                          </span>
-                        )}
-                        <span>{a.user.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleAssignee(a.userId)}
-                          className="text-slate-400 hover:text-slate-600"
+                    {task?.assignees?.map((a) => {
+                      const displayName = a.user?.name || a.user?.email || 'User';
+                      const initial = displayName.charAt(0).toUpperCase();
+                      return (
+                        <span
+                          key={a.id}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-medium text-slate-700"
                         >
-                          &times;
-                        </button>
-                      </span>
-                    ))}
+                          {a.user?.avatarUrl ? (
+                            <img
+                              src={a.user.avatarUrl}
+                              alt={displayName}
+                              className="w-4 h-4 rounded-full object-cover"
+                            />
+                          ) : (
+                            <span className="w-4 h-4 rounded-full bg-[#7B68EE] text-white text-[9px] flex items-center justify-center font-bold">
+                              {initial}
+                            </span>
+                          )}
+                          <span className="truncate max-w-[120px]">{displayName}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleAssignee(a.userId)}
+                            className="text-slate-400 hover:text-slate-600 font-bold"
+                            title={`Remove ${displayName}`}
+                          >
+                            &times;
+                          </button>
+                        </span>
+                      );
+                    })}
 
                     {(!task?.assignees || task.assignees.length === 0) && (
                       <span className="text-xs text-slate-400 italic">Unassigned</span>
@@ -625,39 +655,63 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                   </div>
 
                   {isAssigneePickerOpen && (
-                    <div className="p-2 bg-slate-50 border border-slate-200 rounded-xl space-y-1 mt-1 max-h-40 overflow-y-auto shadow-inner">
-                      {workspaceMembers.map((m) => {
-                        const isAssigned = task?.assignees?.some((a) => a.userId === m.userId);
-                        return (
-                          <button
-                            key={m.id}
-                            type="button"
-                            onClick={() => handleToggleAssignee(m.userId)}
-                            className={cn(
-                              'w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition text-left',
-                              isAssigned
-                                ? 'bg-purple-100/70 text-[#7B68EE]'
-                                : 'hover:bg-slate-200/60 text-slate-700'
-                            )}
-                          >
-                            <div className="flex items-center gap-2">
-                              {m.user.avatarUrl ? (
-                                <img
-                                  src={m.user.avatarUrl}
-                                  alt={m.user.name}
-                                  className="w-5 h-5 rounded-full object-cover"
-                                />
-                              ) : (
-                                <span className="w-5 h-5 rounded-full bg-slate-300 text-slate-700 text-[10px] flex items-center justify-center font-bold">
-                                  {m.user.name.charAt(0)}
-                                </span>
+                    <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 mt-1 max-h-48 overflow-y-auto shadow-inner">
+                      {workspaceMembers.length > 5 && (
+                        <div className="relative mb-2">
+                          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="text"
+                            value={assigneeSearch}
+                            onChange={(e) => setAssigneeSearch(e.target.value)}
+                            placeholder="Search workspace members..."
+                            className="w-full text-xs pl-8 pr-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#7B68EE]"
+                          />
+                        </div>
+                      )}
+
+                      {filteredWorkspaceMembers.length === 0 ? (
+                        <p className="text-center text-xs text-slate-400 py-2">No matching members</p>
+                      ) : (
+                        filteredWorkspaceMembers.map((m) => {
+                          const isAssigned = task?.assignees?.some((a) => a.userId === m.userId);
+                          const displayName = m.user?.name || m.user?.email || 'User';
+                          const initial = displayName.charAt(0).toUpperCase();
+                          return (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => handleToggleAssignee(m.userId)}
+                              className={cn(
+                                'w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition text-left',
+                                isAssigned
+                                  ? 'bg-purple-100/70 text-[#7B68EE]'
+                                  : 'hover:bg-slate-200/60 text-slate-700'
                               )}
-                              <span>{m.user.name}</span>
-                            </div>
-                            {isAssigned && <Check className="w-3.5 h-3.5 text-[#7B68EE]" />}
-                          </button>
-                        );
-                      })}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                {m.user?.avatarUrl ? (
+                                  <img
+                                    src={m.user.avatarUrl}
+                                    alt={displayName}
+                                    className="w-5 h-5 rounded-full object-cover shrink-0"
+                                  />
+                                ) : (
+                                  <span className="w-5 h-5 rounded-full bg-slate-300 text-slate-700 text-[10px] flex items-center justify-center font-bold shrink-0">
+                                    {initial}
+                                  </span>
+                                )}
+                                <div className="min-w-0 flex flex-col">
+                                  <span className="truncate font-semibold">{displayName}</span>
+                                  {m.user?.email && m.user.email !== displayName && (
+                                    <span className="text-[10px] text-slate-400 truncate">{m.user.email}</span>
+                                  )}
+                                </div>
+                              </div>
+                              {isAssigned && <Check className="w-3.5 h-3.5 text-[#7B68EE] shrink-0" />}
+                            </button>
+                          );
+                        })
+                      )}
                     </div>
                   )}
                 </div>
@@ -789,12 +843,20 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                             className="relative group p-2 rounded-xl border border-slate-200 bg-slate-50 flex items-center gap-2 overflow-hidden hover:bg-slate-100/80 transition"
                           >
                             {isImg ? (
-                              <img
-                                src={att.fileUrl}
-                                alt={att.fileName}
-                                onClick={() => setPreviewImageUrl(att.fileUrl)}
-                                className="w-10 h-10 rounded-lg object-cover cursor-pointer hover:opacity-90"
-                              />
+                              <div
+                                className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 cursor-pointer group/img"
+                                onClick={() => setPreviewImage({ url: att.fileUrl, title: att.fileName })}
+                                title="Click to preview image"
+                              >
+                                <img
+                                  src={att.fileUrl}
+                                  alt={att.fileName}
+                                  className="w-full h-full object-cover group-hover/img:scale-105 transition"
+                                />
+                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 flex items-center justify-center text-white transition">
+                                  <Maximize2 className="w-3.5 h-3.5" />
+                                </div>
+                              </div>
                             ) : (
                               <div className="w-10 h-10 rounded-lg bg-indigo-50 text-[#7B68EE] flex items-center justify-center font-bold text-xs shrink-0">
                                 DOC
@@ -802,7 +864,16 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                             )}
 
                             <div className="min-w-0 flex-1">
-                              <p className="text-xs font-medium text-slate-800 truncate" title={att.fileName}>
+                              <p
+                                className={cn(
+                                  'text-xs font-medium text-slate-800 truncate',
+                                  isImg && 'cursor-pointer hover:text-[#7B68EE]'
+                                )}
+                                onClick={() => {
+                                  if (isImg) setPreviewImage({ url: att.fileUrl, title: att.fileName });
+                                }}
+                                title={att.fileName}
+                              >
                                 {att.fileName}
                               </p>
                               <p className="text-[10px] text-slate-400">
@@ -811,6 +882,16 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                             </div>
 
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                              {isImg && (
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewImage({ url: att.fileUrl, title: att.fileName })}
+                                  className="text-slate-400 hover:text-slate-700 p-1"
+                                  title="Preview Image"
+                                >
+                                  <Maximize2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                               <a
                                 href={att.fileUrl}
                                 target="_blank"
@@ -1011,8 +1092,14 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                               <img
                                 src={msg.imageUrl}
                                 alt="Shared in chat"
-                                onClick={() => setPreviewImageUrl(msg.imageUrl || null)}
+                                onClick={() =>
+                                  setPreviewImage({
+                                    url: msg.imageUrl!,
+                                    title: `Shared by ${msg.user?.name || 'Teammate'}`,
+                                  })
+                                }
                                 className="max-w-full h-auto max-h-48 rounded-xl object-cover cursor-pointer hover:opacity-95 border border-slate-200 shadow-sm"
+                                title="Click to view full image"
                               />
                             </div>
                           )}
@@ -1027,16 +1114,31 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 <form onSubmit={handleSendMessage} className="mt-3 pt-3 border-t border-slate-200/80">
                   {/* Image Preview thumbnail if image uploaded for message */}
                   {chatImageUrl && (
-                    <div className="relative mb-2 p-1.5 bg-white border border-slate-200 rounded-xl inline-block shadow-sm">
-                      <img
-                        src={chatImageUrl}
-                        alt="Attached preview"
-                        className="w-24 h-16 object-cover rounded-lg"
-                      />
+                    <div className="relative mb-2 p-1.5 bg-white border border-slate-200 rounded-xl inline-block shadow-sm group">
+                      <div
+                        className="relative cursor-pointer overflow-hidden rounded-lg group/chatimg"
+                        onClick={() =>
+                          setPreviewImage({
+                            url: chatImageUrl,
+                            title: 'Attached Comment Image',
+                          })
+                        }
+                        title="Click to preview image"
+                      >
+                        <img
+                          src={chatImageUrl}
+                          alt="Attached preview"
+                          className="w-24 h-16 object-cover rounded-lg group-hover/chatimg:scale-105 transition"
+                        />
+                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/chatimg:opacity-100 flex items-center justify-center text-white transition rounded-lg">
+                          <Maximize2 className="w-3.5 h-3.5" />
+                        </div>
+                      </div>
                       <button
                         type="button"
                         onClick={() => setChatImageUrl(null)}
-                        className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-red-500 text-white text-xs hover:bg-red-600 transition"
+                        className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-red-500 text-white text-xs hover:bg-red-600 transition shadow"
+                        title="Remove image"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -1137,22 +1239,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       </div>
 
       {/* Lightbox Modal for Image Previews */}
-      {previewImageUrl && (
-        <div
-          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn"
-          onClick={() => setPreviewImageUrl(null)}
-        >
-          <div className="relative max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl">
-            <img src={previewImageUrl} alt="Full preview" className="w-full h-auto object-contain" />
-            <button
-              onClick={() => setPreviewImageUrl(null)}
-              className="absolute top-3 right-3 p-2 rounded-full bg-black/60 text-white hover:bg-black/90 transition"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      )}
+      <ImagePreviewModal
+        imageUrl={previewImage?.url || null}
+        title={previewImage?.title}
+        onClose={() => setPreviewImage(null)}
+      />
     </div>
   );
 };

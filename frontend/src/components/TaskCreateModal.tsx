@@ -19,8 +19,11 @@ import {
   Sparkles,
   ImageIcon,
   Check,
+  Maximize2,
+  Search,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { ImagePreviewModal } from './ImagePreviewModal';
 
 interface TaskCreateModalProps {
   projectId: string;
@@ -80,8 +83,20 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
   const [isUploadingChatImg, setIsUploadingChatImg] = useState(false);
   const chatImgInputRef = useRef<HTMLInputElement>(null);
 
+  // Lightbox preview for images
+  const [previewImage, setPreviewImage] = useState<{ url: string; title?: string } | null>(null);
+  const [assigneeSearch, setAssigneeSearch] = useState('');
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  const filteredMembers = workspaceMembers.filter((m) => {
+    if (!m) return false;
+    const name = m.user?.name?.toLowerCase() || '';
+    const email = m.user?.email?.toLowerCase() || '';
+    const q = assigneeSearch.trim().toLowerCase();
+    return !q || name.includes(q) || email.includes(q);
+  });
 
   // Priority helpers
   const priorityColors: Record<Priority, { bg: string; text: string; border: string }> = {
@@ -213,15 +228,31 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
         {/* Cover Image Banner (if uploaded) */}
         {coverImageUrl && (
           <div className="relative w-full h-36 bg-slate-100 overflow-hidden group border-b border-slate-200">
-            <img src={coverImageUrl} alt="Cover" className="w-full h-full object-cover" />
-            <button
-              type="button"
-              onClick={() => setCoverImageUrl(null)}
-              className="absolute top-3 right-3 p-1.5 rounded-lg bg-black/60 text-white hover:bg-black/80 transition"
-              title="Remove Cover Image"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            <img
+              src={coverImageUrl}
+              alt="Cover"
+              className="w-full h-full object-cover cursor-pointer hover:opacity-95 transition"
+              onClick={() => setPreviewImage({ url: coverImageUrl, title: 'Task Cover Image' })}
+            />
+            <div className="absolute top-3 right-3 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition">
+              <button
+                type="button"
+                onClick={() => setPreviewImage({ url: coverImageUrl, title: 'Task Cover Image' })}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-black/60 text-white text-xs hover:bg-black/80 transition"
+                title="Preview Cover"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+                <span>Preview</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCoverImageUrl(null)}
+                className="p-1.5 rounded-lg bg-black/60 text-white hover:bg-red-600 transition"
+                title="Remove Cover Image"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
 
@@ -401,27 +432,30 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
                 {selectedAssigneeIds.map((id) => {
                   const member = workspaceMembers.find((m) => m.userId === id);
                   if (!member) return null;
+                  const displayName = member.user?.name || member.user?.email || 'User';
+                  const initial = displayName.charAt(0).toUpperCase();
                   return (
                     <span
                       key={id}
                       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-medium text-slate-700"
                     >
-                      {member.user.avatarUrl ? (
+                      {member.user?.avatarUrl ? (
                         <img
                           src={member.user.avatarUrl}
-                          alt={member.user.name}
+                          alt={displayName}
                           className="w-4 h-4 rounded-full object-cover"
                         />
                       ) : (
                         <span className="w-4 h-4 rounded-full bg-[#7B68EE] text-white text-[9px] flex items-center justify-center font-bold">
-                          {member.user.name.charAt(0)}
+                          {initial}
                         </span>
                       )}
-                      <span>{member.user.name}</span>
+                      <span className="truncate max-w-[120px]">{displayName}</span>
                       <button
                         type="button"
                         onClick={() => toggleAssignee(id)}
-                        className="text-slate-400 hover:text-slate-600"
+                        className="text-slate-400 hover:text-slate-600 font-bold"
+                        title={`Remove ${displayName}`}
                       >
                         &times;
                       </button>
@@ -434,41 +468,65 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
                 )}
               </div>
 
-              {/* Assignee Dropdown Picker */}
+              {/* Assignee Dropdown Picker with Search */}
               {isAssigneeOpen && (
-                <div className="p-2 bg-slate-50 border border-slate-200 rounded-xl space-y-1 mt-1 max-h-40 overflow-y-auto">
-                  {workspaceMembers.map((m) => {
-                    const isAssigned = selectedAssigneeIds.includes(m.userId);
-                    return (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => toggleAssignee(m.userId)}
-                        className={cn(
-                          'w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition text-left',
-                          isAssigned
-                            ? 'bg-purple-100/70 text-[#7B68EE]'
-                            : 'hover:bg-slate-200/60 text-slate-700'
-                        )}
-                      >
-                        <div className="flex items-center gap-2">
-                          {m.user.avatarUrl ? (
-                            <img
-                              src={m.user.avatarUrl}
-                              alt={m.user.name}
-                              className="w-5 h-5 rounded-full object-cover"
-                            />
-                          ) : (
-                            <span className="w-5 h-5 rounded-full bg-slate-300 text-slate-700 text-[10px] flex items-center justify-center font-bold">
-                              {m.user.name.charAt(0)}
-                            </span>
+                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 mt-1 max-h-48 overflow-y-auto shadow-inner">
+                  {workspaceMembers.length > 5 && (
+                    <div className="relative mb-2">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={assigneeSearch}
+                        onChange={(e) => setAssigneeSearch(e.target.value)}
+                        placeholder="Search workspace members..."
+                        className="w-full text-xs pl-8 pr-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#7B68EE]"
+                      />
+                    </div>
+                  )}
+
+                  {filteredMembers.length === 0 ? (
+                    <p className="text-center text-xs text-slate-400 py-2">No matching members</p>
+                  ) : (
+                    filteredMembers.map((m) => {
+                      const isAssigned = selectedAssigneeIds.includes(m.userId);
+                      const displayName = m.user?.name || m.user?.email || 'User';
+                      const initial = displayName.charAt(0).toUpperCase();
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => toggleAssignee(m.userId)}
+                          className={cn(
+                            'w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition text-left',
+                            isAssigned
+                              ? 'bg-purple-100/70 text-[#7B68EE]'
+                              : 'hover:bg-slate-200/60 text-slate-700'
                           )}
-                          <span>{m.user.name}</span>
-                        </div>
-                        {isAssigned && <Check className="w-3.5 h-3.5 text-[#7B68EE]" />}
-                      </button>
-                    );
-                  })}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            {m.user?.avatarUrl ? (
+                              <img
+                                src={m.user.avatarUrl}
+                                alt={displayName}
+                                className="w-5 h-5 rounded-full object-cover shrink-0"
+                              />
+                            ) : (
+                              <span className="w-5 h-5 rounded-full bg-slate-300 text-slate-700 text-[10px] flex items-center justify-center font-bold shrink-0">
+                                {initial}
+                              </span>
+                            )}
+                            <div className="min-w-0 flex flex-col">
+                              <span className="truncate font-semibold">{displayName}</span>
+                              {m.user?.email && m.user.email !== displayName && (
+                                <span className="text-[10px] text-slate-400 truncate">{m.user.email}</span>
+                              )}
+                            </div>
+                          </div>
+                          {isAssigned && <Check className="w-3.5 h-3.5 text-[#7B68EE] shrink-0" />}
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
               )}
             </div>
@@ -569,38 +627,71 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
                   {uploadedAttachments.map((att, idx) => (
                     <div
                       key={idx}
-                      className="relative p-2 rounded-xl border border-slate-200 bg-slate-50 flex items-center gap-2 group overflow-hidden"
+                      className="relative p-2 rounded-xl border border-slate-200 bg-slate-50 flex items-center gap-2 group overflow-hidden hover:bg-slate-100/70 transition"
                     >
                       {att.isImage ? (
-                        <img
-                          src={att.fileUrl}
-                          alt={att.fileName}
-                          className="w-10 h-10 rounded-lg object-cover shrink-0"
-                        />
+                        <div
+                          className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 cursor-pointer group/img"
+                          onClick={() => setPreviewImage({ url: att.fileUrl, title: att.fileName })}
+                          title="Click to preview image"
+                        >
+                          <img
+                            src={att.fileUrl}
+                            alt={att.fileName}
+                            className="w-full h-full object-cover group-hover/img:scale-105 transition"
+                          />
+                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 flex items-center justify-center text-white transition">
+                            <Maximize2 className="w-3.5 h-3.5" />
+                          </div>
+                        </div>
                       ) : (
                         <div className="w-10 h-10 rounded-lg bg-indigo-50 text-[#7B68EE] flex items-center justify-center font-bold text-xs shrink-0">
                           DOC
                         </div>
                       )}
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-slate-800 truncate">
+                        <p
+                          className={cn(
+                            'text-xs font-medium text-slate-800 truncate',
+                            att.isImage && 'cursor-pointer hover:text-[#7B68EE]'
+                          )}
+                          onClick={() => {
+                            if (att.isImage) {
+                              setPreviewImage({ url: att.fileUrl, title: att.fileName });
+                            }
+                          }}
+                          title={att.fileName}
+                        >
                           {att.fileName}
                         </p>
                         <p className="text-[10px] text-slate-400">
                           {(att.fileSize / 1024).toFixed(0)} KB
                         </p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setUploadedAttachments(
-                            uploadedAttachments.filter((_, i) => i !== idx)
-                          )
-                        }
-                        className="text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition p-1"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                        {att.isImage && (
+                          <button
+                            type="button"
+                            onClick={() => setPreviewImage({ url: att.fileUrl, title: att.fileName })}
+                            className="text-slate-400 hover:text-slate-700 p-1"
+                            title="Preview Image"
+                          >
+                            <Maximize2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setUploadedAttachments(
+                              uploadedAttachments.filter((_, i) => i !== idx)
+                            )
+                          }
+                          className="text-slate-400 hover:text-red-500 transition p-1"
+                          title="Remove Attachment"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -672,16 +763,26 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
 
               {/* Chat Image Preview if attached */}
               {chatImageUrl && (
-                <div className="relative mb-3 p-2 bg-white rounded-xl border border-slate-200/80 inline-block shadow-sm">
-                  <img
-                    src={chatImageUrl}
-                    alt="Chat Attachment"
-                    className="w-32 h-24 object-cover rounded-lg"
-                  />
+                <div className="relative mb-3 p-2 bg-white rounded-xl border border-slate-200/80 inline-block shadow-sm group">
+                  <div
+                    className="relative cursor-pointer overflow-hidden rounded-lg group/chatimg"
+                    onClick={() => setPreviewImage({ url: chatImageUrl, title: 'Chat Reference Image' })}
+                    title="Click to preview image"
+                  >
+                    <img
+                      src={chatImageUrl}
+                      alt="Chat Attachment"
+                      className="w-32 h-24 object-cover rounded-lg group-hover/chatimg:scale-105 transition"
+                    />
+                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/chatimg:opacity-100 flex items-center justify-center text-white transition rounded-lg">
+                      <Maximize2 className="w-4 h-4" />
+                    </div>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setChatImageUrl(null)}
-                    className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-red-500 text-white text-xs hover:bg-red-600 transition"
+                    className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-red-500 text-white text-xs hover:bg-red-600 transition shadow"
+                    title="Remove image"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -747,6 +848,13 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Lightbox Modal for Image Previews */}
+      <ImagePreviewModal
+        imageUrl={previewImage?.url || null}
+        title={previewImage?.title}
+        onClose={() => setPreviewImage(null)}
+      />
     </div>
   );
 };

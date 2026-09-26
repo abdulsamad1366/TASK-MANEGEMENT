@@ -392,6 +392,7 @@ export const createTask = async (req: Request, res: Response) => {
     });
 
     // Notify assignees
+    const actorName = req.user.name || req.user.email || 'A teammate';
     for (const assigneeId of assigneeIds) {
       if (assigneeId !== req.user.id) {
         const notif = await prisma.notification.create({
@@ -400,7 +401,7 @@ export const createTask = async (req: Request, res: Response) => {
             actorId: req.user.id,
             type: 'ASSIGNMENT',
             title: 'Assigned to New Task',
-            message: `${req.user.name} assigned you to ${task.list.project.key}-${task.taskNumber}: ${task.title}`,
+            message: `${actorName} assigned you to ${task.list.project.key}-${task.taskNumber}: ${task.title}`,
             entityId: task.id,
           },
         });
@@ -487,6 +488,7 @@ export const updateTask = async (req: Request, res: Response) => {
         (userId: string) => !existingUserIds.includes(userId) && userId !== req.user?.id
       );
 
+      const actorName = req.user.name || req.user.email || 'A teammate';
       for (const userId of newlyAssigned) {
         const notif = await prisma.notification.create({
           data: {
@@ -494,7 +496,7 @@ export const updateTask = async (req: Request, res: Response) => {
             actorId: req.user.id,
             type: 'ASSIGNMENT',
             title: 'Assigned to Task',
-            message: `${req.user.name} assigned you to ${existingTask.list.project.key}-${existingTask.taskNumber}: ${existingTask.title}`,
+            message: `${actorName} assigned you to ${existingTask.list.project.key}-${existingTask.taskNumber}: ${existingTask.title}`,
             entityId: id,
           },
         });
