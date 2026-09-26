@@ -90,7 +90,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               setActiveTab('login');
               setError('');
             }}
-            className={`flex-1 py-2.5 rounded-xl transition min-h-[40px] ${
+            className={`flex-1 py-2.5 rounded-xl transition min-h-10 ${
               activeTab === 'login'
                 ? 'bg-white text-slate-900 shadow-xs'
                 : 'text-slate-500 hover:text-slate-800'
@@ -104,7 +104,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               setActiveTab('signup');
               setError('');
             }}
-            className={`flex-1 py-2.5 rounded-xl transition min-h-[40px] ${
+            className={`flex-1 py-2.5 rounded-xl transition min-h-10 ${
               activeTab === 'signup'
                 ? 'bg-white text-slate-900 shadow-xs'
                 : 'text-slate-500 hover:text-slate-800'
@@ -188,7 +188,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full mt-2 py-3.5 sm:py-3 bg-[#7B68EE] hover:bg-[#6C5CE7] active:scale-[0.99] text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 disabled:opacity-50 min-h-[46px]"
+            className="w-full mt-2 py-3.5 sm:py-3 bg-[#7B68EE] hover:bg-[#6C5CE7] active:scale-[0.99] text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 disabled:opacity-50 min-h-11.5"
           >
             <span>
               {isLoading

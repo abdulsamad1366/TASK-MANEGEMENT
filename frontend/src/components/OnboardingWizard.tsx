@@ -374,7 +374,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete }
                     <select
                       value={role}
                       onChange={(e: any) => setRole(e.target.value)}
-                      className="flex-1 sm:flex-none px-3 py-3 sm:py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 outline-none min-h-[44px]"
+                      className="flex-1 sm:flex-none px-3 py-3 sm:py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 outline-none min-h-11"
                     >
                       <option value="MEMBER">Member</option>
                       <option value="MANAGER">Manager</option>
@@ -384,7 +384,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete }
                     <button
                       type="button"
                       onClick={handleAddEmail}
-                      className="px-4 py-3 sm:py-2.5 rounded-xl bg-[#7B68EE] sm:bg-slate-100 hover:bg-[#6C5CE7] sm:hover:bg-slate-200 text-white sm:text-slate-700 text-xs font-bold transition flex items-center justify-center gap-1.5 min-h-[44px] shrink-0"
+                      className="px-4 py-3 sm:py-2.5 rounded-xl bg-[#7B68EE] sm:bg-slate-100 hover:bg-[#6C5CE7] sm:hover:bg-slate-200 text-white sm:text-slate-700 text-xs font-bold transition flex items-center justify-center gap-1.5 min-h-11 shrink-0"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Add</span>

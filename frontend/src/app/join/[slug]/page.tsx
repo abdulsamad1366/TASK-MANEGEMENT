@@ -239,7 +239,7 @@ export default function JoinWorkspacePage() {
 
           <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-500">
             <span>Signed in as:</span>
-            <span className="font-semibold text-slate-800 truncate max-w-[180px]">
+            <span className="font-semibold text-slate-800 truncate max-w-45">
               {user.email}
             </span>
           </div>

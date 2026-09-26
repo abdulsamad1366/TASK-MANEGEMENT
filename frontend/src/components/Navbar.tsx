@@ -66,7 +66,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="w-5 h-5 rounded-md bg-purple-50 flex items-center justify-center font-bold text-[10px] shrink-0">
               {getWorkspaceTypeIcon(activeWorkspace?.type)}
             </div>
-            <span className="truncate max-w-[90px] sm:max-w-32.5">{activeWorkspace?.name || 'Workspace'}</span>
+            <span className="truncate max-w-22.5 sm:max-w-32.5">{activeWorkspace?.name || 'Workspace'}</span>
             {activeWorkspace?.joinRequests && activeWorkspace.joinRequests.length > 0 && (
               <span
                 title={`${activeWorkspace.joinRequests.length} pending join request${activeWorkspace.joinRequests.length > 1 ? 's' : ''}`}

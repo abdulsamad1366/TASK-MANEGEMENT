@@ -1,5 +1,3 @@
-/// <reference types="node" />
-import process from 'node:process';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -19,6 +17,7 @@ async function main() {
   await prisma.taskList.deleteMany();
   await prisma.project.deleteMany();
   await prisma.space.deleteMany();
+  await prisma.workspaceJoinRequest.deleteMany();
   await prisma.workspaceInvitation.deleteMany();
   await prisma.workspaceMember.deleteMany();
   await prisma.workspace.deleteMany();
