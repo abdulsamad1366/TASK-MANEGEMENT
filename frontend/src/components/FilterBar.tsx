@@ -55,15 +55,15 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   return (
     <div className="space-y-3 mb-4">
       {/* Top Row: View Switcher Tabs + Search + Create Button */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
         {/* ClickUp View Switcher Tabs */}
-        <div className="flex items-center p-0.5 rounded-lg bg-slate-100 border border-slate-200/80">
+        <div className="flex items-center p-0.5 rounded-lg bg-slate-100 border border-slate-200/80 overflow-x-auto max-w-full">
           {views.map((v) => (
             <button
               key={v.id}
               onClick={() => onViewChange(v.id)}
               className={cn(
-                'flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition',
+                'flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-md text-xs font-semibold transition shrink-0',
                 currentView === v.id
                   ? 'bg-white text-slate-900 shadow-xs'
                   : 'text-slate-500 hover:text-slate-800'
@@ -84,7 +84,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               value={filters.search}
               onChange={(e) => onFilterChange({ ...filters, search: e.target.value })}
               placeholder="Search tasks..."
-              className="text-xs pl-7 pr-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:ring-1 focus:ring-[#7B68EE] outline-none w-44 transition"
+              className="text-xs pl-7 pr-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:ring-1 focus:ring-[#7B68EE] outline-none w-32 sm:w-44 transition"
             />
           </div>
 
@@ -93,21 +93,21 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             className="flex items-center gap-1.5 px-3 py-1.5 bg-[#7B68EE] hover:bg-[#6C5CE7] text-white rounded-lg text-xs font-bold shadow-xs transition"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>New Task</span>
+            <span className="hidden sm:inline">New Task</span>
           </button>
         </div>
       </div>
 
       {/* Middle Row: Quick Filter Pills & Dropdowns */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
         {/* Quick Filter Pills */}
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
           {quickFilters.map((qf) => (
             <button
               key={qf.id}
               onClick={() => onFilterChange({ ...filters, quickView: qf.id })}
               className={cn(
-                'px-2.5 py-0.5 rounded-full text-xs font-medium transition border',
+                'px-2.5 py-0.5 rounded-full text-xs font-medium transition border shrink-0',
                 filters.quickView === qf.id
                   ? 'bg-purple-50 border-purple-200 text-[#7B68EE] font-bold'
                   : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'

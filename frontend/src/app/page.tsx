@@ -45,6 +45,7 @@ export default function Home() {
   const [currentView, setCurrentView] = useState<BoardView>('kanban');
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [isOnboarding, setIsOnboarding] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // ClickUp Hierarchy State: Spaces > Projects > Lists
   const [spaces, setSpaces] = useState<Space[]>([]);
@@ -400,11 +401,12 @@ export default function Home() {
         onOpenSettings={() => setCurrentTab('settings')}
         onSelectTask={(tId) => setActiveTaskId(tId)}
         onOpenCreateWorkspace={() => setIsWorkspaceModalOpen(true)}
+        onToggleMobileSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
       />
 
       {/* Main Workspace Layout */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* ClickUp Sidebar (Spaces > Projects > Lists) */}
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* ClickUp Sidebar (Spaces > Projects > Lists) - Desktop & Mobile Drawer */}
         <Sidebar
           currentTab={currentTab}
           spaces={spaces}
@@ -435,10 +437,12 @@ export default function Home() {
             setIsCreateListOpen(true);
           }}
           onInviteMember={() => setIsInviteOpen(true)}
+          isMobileOpen={isMobileSidebarOpen}
+          onCloseMobile={() => setIsMobileSidebarOpen(false)}
         />
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto px-6 py-5 max-h-[calc(100vh-64px)]">
+        <main className="flex-1 overflow-y-auto p-3 sm:px-6 sm:py-5 max-h-[calc(100vh-56px)]">
           {currentTab === 'dashboard' ? (
             <DashboardView
               workspaceId={activeWorkspace?.id || ''}

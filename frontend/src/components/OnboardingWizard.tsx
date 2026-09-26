@@ -209,7 +209,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete }
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Acme Technologies, Sarah's Studio, OpenSource Hub"
-                  className="w-full text-xs px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 outline-none focus:ring-2 focus:ring-[#7B68EE]/20 focus:border-[#7B68EE] transition"
+                  className="w-full text-base sm:text-xs px-3.5 py-3 sm:py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 outline-none focus:ring-2 focus:ring-[#7B68EE]/20 focus:border-[#7B68EE] transition"
                 />
               </div>
 
@@ -357,37 +357,39 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete }
                 <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
                   Email Address
                 </label>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <div className="relative flex-1">
-                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type="email"
                       value={emailInput}
                       onChange={(e) => setEmailInput(e.target.value)}
                       onKeyDown={handleKeyDown}
                       placeholder="colleague@company.com"
-                      className="w-full text-xs pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 outline-none focus:ring-2 focus:ring-[#7B68EE]/20 focus:border-[#7B68EE] transition"
+                      className="w-full text-base sm:text-xs pl-10 pr-3.5 py-3 sm:py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 outline-none focus:ring-2 focus:ring-[#7B68EE]/20 focus:border-[#7B68EE] transition"
                     />
                   </div>
 
-                  <select
-                    value={role}
-                    onChange={(e: any) => setRole(e.target.value)}
-                    className="px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 outline-none"
-                  >
-                    <option value="MEMBER">Member</option>
-                    <option value="MANAGER">Manager</option>
-                    <option value="ADMIN">Admin</option>
-                  </select>
+                  <div className="flex gap-2">
+                    <select
+                      value={role}
+                      onChange={(e: any) => setRole(e.target.value)}
+                      className="flex-1 sm:flex-none px-3 py-3 sm:py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 outline-none min-h-[44px]"
+                    >
+                      <option value="MEMBER">Member</option>
+                      <option value="MANAGER">Manager</option>
+                      <option value="ADMIN">Admin</option>
+                    </select>
 
-                  <button
-                    type="button"
-                    onClick={handleAddEmail}
-                    className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition flex items-center gap-1.5"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add</span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={handleAddEmail}
+                      className="px-4 py-3 sm:py-2.5 rounded-xl bg-[#7B68EE] sm:bg-slate-100 hover:bg-[#6C5CE7] sm:hover:bg-slate-200 text-white sm:text-slate-700 text-xs font-bold transition flex items-center justify-center gap-1.5 min-h-[44px] shrink-0"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 

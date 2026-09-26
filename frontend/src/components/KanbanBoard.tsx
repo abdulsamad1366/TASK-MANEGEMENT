@@ -100,7 +100,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>
-      <div className="flex gap-4 overflow-x-auto pb-6 pt-1 items-start min-h-[calc(100vh-210px)] select-none">
+      <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-6 pt-1 items-start min-h-[calc(100vh-210px)] select-none snap-x snap-mandatory sm:snap-none">
         {columns.map((column) => {
           const colTasks = localTasks
             .filter((t) => t.columnId === column.id)
@@ -109,7 +109,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           return (
             <div
               key={column.id}
-              className="shrink-0 w-80 flex flex-col rounded-2xl bg-slate-50/70 border border-slate-200/80 max-h-[calc(100vh-210px)] shadow-xs"
+              className="shrink-0 w-[84vw] sm:w-80 flex flex-col rounded-2xl bg-slate-50/70 border border-slate-200/80 max-h-[calc(100vh-210px)] shadow-xs snap-center sm:snap-align-none"
             >
               {/* Column Header */}
               <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-200/60 bg-white/60 rounded-t-2xl">

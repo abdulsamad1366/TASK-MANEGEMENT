@@ -1,14 +1,27 @@
 import { io, Socket } from 'socket.io-client';
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5001';
+const getSocketUrl = (): string => {
+  const envUrl = process.env.NEXT_PUBLIC_SOCKET_URL;
+  if (typeof window !== 'undefined') {
+    if (envUrl && envUrl.includes('localhost') && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      return `http://${window.location.hostname}:5001`;
+    }
+    if (envUrl) {
+      return envUrl;
+    }
+    return `http://${window.location.hostname}:5001`;
+  }
+  return envUrl || 'http://localhost:5001';
+};
 
 let socket: Socket | null = null;
 
 export const getSocket = (): Socket => {
   if (!socket && typeof window !== 'undefined') {
     const token = localStorage.getItem('task_access_token');
+    const socketUrl = getSocketUrl();
 
-    socket = io(SOCKET_URL, {
+    socket = io(socketUrl, {
       auth: { token },
       autoConnect: true,
       reconnection: true,
@@ -20,7 +33,7 @@ export const getSocket = (): Socket => {
       console.log('✓ Connected to real-time server:', socket?.id);
     });
 
-    socket.on('disconnect', (reason) => {
+    socket.on('disconnect', (reason: any) => {
       console.log('Real-time server disconnected:', reason);
     });
   }

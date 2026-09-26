@@ -53,12 +53,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
 
         if (currentWs) {
+          // Immediately set activeWorkspaceState to avoid flicker or onboarding redirect
+          setActiveWorkspaceState(currentWs);
           // Fetch full workspace details
           try {
             const wsDetail = await api.getWorkspace(currentWs.workspaceId || currentWs.id);
-            setActiveWorkspaceState(wsDetail.workspace);
+            if (wsDetail?.workspace) {
+              setActiveWorkspaceState(wsDetail.workspace);
+            }
           } catch {
-            setActiveWorkspaceState(currentWs);
+            // Keep currentWs
           }
         }
       }
@@ -89,11 +93,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (wsList.length > 0) {
         const first = wsList[0];
         localStorage.setItem('task_active_workspace_id', first.workspaceId || first.id);
+        // Set immediately to prevent flashing OnboardingWizard
+        setActiveWorkspaceState(first);
         try {
           const wsDetail = await api.getWorkspace(first.workspaceId || first.id);
-          setActiveWorkspaceState(wsDetail.workspace);
+          if (wsDetail?.workspace) {
+            setActiveWorkspaceState(wsDetail.workspace);
+          }
         } catch {
-          setActiveWorkspaceState(first);
+          // Keep first
         }
       } else {
         setActiveWorkspaceState(null);

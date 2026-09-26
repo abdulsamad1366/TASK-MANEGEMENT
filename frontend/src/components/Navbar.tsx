@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { NotificationPopover } from './NotificationPopover';
-import { Search, ChevronDown, Check, LogOut, Settings, User as UserIcon, Sparkles, Plus, Globe, Users, User } from 'lucide-react';
+import { Search, ChevronDown, Check, LogOut, Settings, User as UserIcon, Sparkles, Plus, Globe, Users, User, Menu } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { FlowdeskLogo } from './FlowdeskLogo';
 
@@ -12,6 +12,7 @@ interface NavbarProps {
   onOpenSettings?: () => void;
   onSelectTask?: (taskId: string) => void;
   onOpenCreateWorkspace?: () => void;
+  onToggleMobileSidebar?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -19,6 +20,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSettings,
   onSelectTask,
   onOpenCreateWorkspace,
+  onToggleMobileSidebar,
 }) => {
   const { user, workspaces, activeWorkspace, setActiveWorkspace, logout } = useAuth();
   const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
@@ -36,11 +38,22 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="h-14 border-b border-slate-200/80 bg-white px-5 flex items-center justify-between z-40 select-none shadow-xs">
-      {/* Left: Brand + Active Workspace Selector */}
-      <div className="flex items-center gap-4">
+    <header className="h-14 border-b border-slate-200/80 bg-white px-3 sm:px-5 flex items-center justify-between z-40 select-none shadow-xs sticky top-0">
+      {/* Left: Mobile hamburger + Brand + Active Workspace Selector */}
+      <div className="flex items-center gap-2 sm:gap-4">
+        {onToggleMobileSidebar && (
+          <button
+            type="button"
+            onClick={onToggleMobileSidebar}
+            className="p-1.5 -ml-1 text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 md:hidden transition shrink-0"
+            aria-label="Toggle navigation menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
+
         {/* Flowdesk Brand Logo */}
-        <div className="pr-3 border-r border-slate-200">
+        <div className="pr-2 sm:pr-3 border-r border-slate-200 shrink-0">
           <FlowdeskLogo size="sm" />
         </div>
 
@@ -48,13 +61,13 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="relative">
           <button
             onClick={() => setShowWorkspaceMenu(!showWorkspaceMenu)}
-            className="flex items-center gap-2 px-2.5 py-1 rounded-lg hover:bg-slate-100 transition text-xs font-semibold text-slate-800"
+            className="flex items-center gap-1.5 sm:gap-2 px-2 py-1 rounded-lg hover:bg-slate-100 transition text-xs font-semibold text-slate-800"
           >
-            <div className="w-5 h-5 rounded-md bg-purple-50 flex items-center justify-center font-bold text-[10px]">
+            <div className="w-5 h-5 rounded-md bg-purple-50 flex items-center justify-center font-bold text-[10px] shrink-0">
               {getWorkspaceTypeIcon(activeWorkspace?.type)}
             </div>
-            <span className="truncate max-w-32.5">{activeWorkspace?.name || 'Workspace'}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            <span className="truncate max-w-[90px] sm:max-w-32.5">{activeWorkspace?.name || 'Workspace'}</span>
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
           </button>
 
           {/* Workspace Dropdown */}

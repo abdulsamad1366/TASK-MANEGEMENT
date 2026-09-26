@@ -36,12 +36,8 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, or server-to-server)
-      if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
-        callback(null, true);
-      } else {
-        callback(null, true); // Dev-friendly fallback
-      }
+      // Allow all origins (local network, mobile devices, Vercel, localhost)
+      callback(null, true);
     },
     credentials: true,
   })
@@ -95,8 +91,8 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 
 const PORT = process.env.PORT || 5001;
 
-server.listen(PORT, () => {
-  console.log(`🚀 Task Management API listening on http://localhost:${PORT}`);
+server.listen(Number(PORT), '0.0.0.0', () => {
+  console.log(`🚀 Task Management API listening on 0.0.0.0:${PORT} (http://localhost:${PORT})`);
   console.log(`📚 Swagger API Docs available at http://localhost:${PORT}/api/docs`);
 });
 

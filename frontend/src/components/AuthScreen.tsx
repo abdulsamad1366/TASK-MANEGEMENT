@@ -1,8 +1,6 @@
-'use client';
-
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Lock, Mail, User as UserIcon, ArrowRight, Sparkles, Check } from 'lucide-react';
+import { Lock, Mail, User as UserIcon, ArrowRight, Sparkles, Eye, EyeOff } from 'lucide-react';
 import { FlowdeskLogo } from './FlowdeskLogo';
 
 interface AuthScreenProps {
@@ -26,6 +24,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>(initialTab);
   const [email, setEmail] = useState(prefilledEmail);
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -84,8 +83,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 bg-[#F8FAFC] select-none">
-      <div className="w-full max-w-md bg-white border border-slate-200/80 rounded-3xl shadow-xl overflow-hidden p-8 sm:p-9 transition-all">
+    <div className="min-h-screen w-full flex flex-col justify-center items-center p-4 py-8 overflow-y-auto bg-[#F8FAFC]">
+      <div className="w-full max-w-md bg-white border border-slate-200/80 rounded-3xl shadow-xl overflow-hidden p-6 sm:p-9 my-auto transition-all">
         {/* Brand Header */}
         <div className="flex flex-col items-center justify-center text-center mb-6">
           <FlowdeskLogo size="xl" showText={false} className="mb-2.5" />
@@ -107,7 +106,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               setActiveTab('login');
               setError('');
             }}
-            className={`flex-1 py-2 rounded-xl transition ${
+            className={`flex-1 py-2.5 rounded-xl transition min-h-[40px] ${
               activeTab === 'login'
                 ? 'bg-white text-slate-900 shadow-xs'
                 : 'text-slate-500 hover:text-slate-800'
@@ -121,7 +120,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               setActiveTab('signup');
               setError('');
             }}
-            className={`flex-1 py-2 rounded-xl transition ${
+            className={`flex-1 py-2.5 rounded-xl transition min-h-[40px] ${
               activeTab === 'signup'
                 ? 'bg-white text-slate-900 shadow-xs'
                 : 'text-slate-500 hover:text-slate-800'
@@ -133,27 +132,27 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
         {/* Inline Error Message */}
         {error && (
-          <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-600 text-xs font-medium animate-fadeIn">
+          <div className="mb-4 p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-600 text-xs font-medium animate-fadeIn">
             {error}
           </div>
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-3.5">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {activeTab === 'signup' && (
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
                 Full Name
               </label>
               <div className="relative">
-                <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Sarah Connor"
-                  className="w-full text-xs pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 outline-none focus:ring-2 focus:ring-[#7B68EE]/20 focus:border-[#7B68EE] transition"
+                  className="w-full text-base sm:text-xs pl-10 pr-3.5 py-3 sm:py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 outline-none focus:ring-2 focus:ring-[#7B68EE]/20 focus:border-[#7B68EE] transition"
                 />
               </div>
             </div>
@@ -164,14 +163,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               Email Address
             </label>
             <div className="relative">
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@company.com"
-                className="w-full text-xs pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 outline-none focus:ring-2 focus:ring-[#7B68EE]/20 focus:border-[#7B68EE] transition"
+                className="w-full text-base sm:text-xs pl-10 pr-3.5 py-3 sm:py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 outline-none focus:ring-2 focus:ring-[#7B68EE]/20 focus:border-[#7B68EE] transition"
               />
             </div>
           </div>
@@ -181,22 +181,30 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               Password
             </label>
             <div className="relative">
-              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 required
+                autoComplete={activeTab === 'signup' ? 'new-password' : 'current-password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
-                className="w-full text-xs pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 outline-none focus:ring-2 focus:ring-[#7B68EE]/20 focus:border-[#7B68EE] transition"
+                className="w-full text-base sm:text-xs pl-10 pr-10 py-3 sm:py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 outline-none focus:ring-2 focus:ring-[#7B68EE]/20 focus:border-[#7B68EE] transition"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 transition"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full mt-2 py-3 bg-[#7B68EE] hover:bg-[#6C5CE7] text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full mt-2 py-3.5 sm:py-3 bg-[#7B68EE] hover:bg-[#6C5CE7] active:scale-[0.99] text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 disabled:opacity-50 min-h-[46px]"
           >
             <span>
               {isLoading

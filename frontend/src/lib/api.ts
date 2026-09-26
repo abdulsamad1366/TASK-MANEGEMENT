@@ -1,4 +1,18 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+const getApiBaseUrl = (): string => {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window !== 'undefined') {
+    // If running in browser on mobile or non-localhost host, bypass localhost env URL
+    if (envUrl && envUrl.includes('localhost') && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      return '/api';
+    }
+    if (envUrl) {
+      return envUrl;
+    }
+    // In browser (desktop or mobile), relative /api routes smoothly through Next.js proxy
+    return '/api';
+  }
+  return envUrl || (process.env.BACKEND_URL ? `${process.env.BACKEND_URL}/api` : 'http://localhost:5001/api');
+};
 
 class ApiClient {
   private getHeaders(isFormData = false): HeadersInit {
@@ -18,7 +32,8 @@ class ApiClient {
   }
 
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${API_URL}${endpoint}`;
+    const baseUrl = getApiBaseUrl();
+    const url = `${baseUrl}${endpoint}`;
     const isFormData = options.body instanceof FormData;
 
     const response = await fetch(url, {
@@ -34,7 +49,7 @@ class ApiClient {
       const refreshToken = localStorage.getItem('task_refresh_token');
       if (refreshToken && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/refresh')) {
         try {
-          const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
+          const refreshRes = await fetch(`${baseUrl}/auth/refresh`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ refreshToken }),
