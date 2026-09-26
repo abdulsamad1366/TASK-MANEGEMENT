@@ -42,6 +42,7 @@ export default function Home() {
 
   // Navigation & View state
   const [currentTab, setCurrentTab] = useState<'dashboard' | 'project' | 'settings' | 'global-tasks'>('project');
+  const [settingsTab, setSettingsTab] = useState<'workspace' | 'members' | 'personal'>('workspace');
   const [currentView, setCurrentView] = useState<BoardView>('kanban');
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [isOnboarding, setIsOnboarding] = useState(false);
@@ -90,7 +91,10 @@ export default function Home() {
   useEffect(() => {
     if (!activeWorkspace?.id) return;
     loadHierarchy();
-  }, [activeWorkspace?.id]);
+    if (activeWorkspace.members && activeWorkspace.members.length > 0) {
+      setWorkspaceMembers(activeWorkspace.members);
+    }
+  }, [activeWorkspace?.id, activeWorkspace?.members]);
 
   const loadHierarchy = async () => {
     if (!activeWorkspace?.id) return;
@@ -409,12 +413,16 @@ export default function Home() {
         {/* ClickUp Sidebar (Spaces > Projects > Lists) - Desktop & Mobile Drawer */}
         <Sidebar
           currentTab={currentTab}
+          settingsTab={settingsTab}
           spaces={spaces}
           selectedSpaceId={selectedSpaceId}
           selectedProjectId={selectedProjectId}
           selectedListId={selectedListId}
           activeWorkspace={activeWorkspace}
-          onSelectTab={(tab) => setCurrentTab(tab)}
+          onSelectTab={(tab) => {
+            if (tab === 'settings') setSettingsTab('workspace');
+            setCurrentTab(tab);
+          }}
           onSelectSpace={(spaceId) => {
             setSelectedSpaceId(spaceId);
             const sp = spaces.find((s) => s.id === spaceId);
@@ -436,7 +444,10 @@ export default function Home() {
             setListCreateProjectId(projectId);
             setIsCreateListOpen(true);
           }}
-          onInviteMember={() => setIsInviteOpen(true)}
+          onInviteMember={() => {
+            setSettingsTab('members');
+            setCurrentTab('settings');
+          }}
           isMobileOpen={isMobileSidebarOpen}
           onCloseMobile={() => setIsMobileSidebarOpen(false)}
         />
@@ -455,8 +466,22 @@ export default function Home() {
             <SettingsView
               workspace={activeWorkspace}
               members={workspaceMembers}
-              onWorkspaceUpdated={() => loadHierarchy()}
-              onRefreshMembers={() => {
+              initialTab={settingsTab}
+              onWorkspaceUpdated={() => {
+                loadHierarchy();
+                refreshUser();
+              }}
+              onRefreshMembers={async () => {
+                if (activeWorkspace?.id) {
+                  try {
+                    const res = await api.getWorkspace(activeWorkspace.id);
+                    if (res?.workspace?.members) {
+                      setWorkspaceMembers(res.workspace.members);
+                    }
+                  } catch (e) {
+                    console.error('Failed to reload members:', e);
+                  }
+                }
                 if (selectedListId) loadListDetails(selectedListId);
               }}
             />

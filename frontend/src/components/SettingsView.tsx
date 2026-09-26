@@ -1,14 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { Workspace, WorkspaceMember, Role } from '../types';
-import { Building2, Users, Shield, Trash2, Check, Bell, Sun } from 'lucide-react';
+import { Building2, Users, Shield, Bell, Sun } from 'lucide-react';
+import { WorkspaceMembersSettings } from './WorkspaceMembersSettings';
 
 interface SettingsViewProps {
   workspace: Workspace;
   members: WorkspaceMember[];
+  initialTab?: 'workspace' | 'members' | 'personal';
   onWorkspaceUpdated?: (updated: Workspace) => void;
   onRefreshMembers?: () => void;
 }
@@ -16,11 +18,18 @@ interface SettingsViewProps {
 export const SettingsView: React.FC<SettingsViewProps> = ({
   workspace,
   members,
+  initialTab = 'workspace',
   onWorkspaceUpdated,
   onRefreshMembers,
 }) => {
   const { user, updateUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<'workspace' | 'members' | 'personal'>('workspace');
+  const [activeTab, setActiveTab] = useState<'workspace' | 'members' | 'personal'>(initialTab);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   // Workspace form state
   const [name, setName] = useState(workspace.name || '');
@@ -54,26 +63,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setWsMsg('Error: ' + err.message);
     } finally {
       setIsSavingWs(false);
-    }
-  };
-
-  const handleRoleChange = async (memberId: string, newRole: Role) => {
-    try {
-      await api.updateMemberRole(workspace.id, memberId, newRole);
-      if (onRefreshMembers) onRefreshMembers();
-    } catch (err) {
-      console.error('Failed to change role:', err);
-    }
-  };
-
-  const handleRemoveMember = async (memberId: string) => {
-    if (confirm('Are you sure you want to remove this member from the workspace?')) {
-      try {
-        await api.removeMember(workspace.id, memberId);
-        if (onRefreshMembers) onRefreshMembers();
-      } catch (err) {
-        console.error('Failed to remove member:', err);
-      }
     }
   };
 
@@ -194,58 +183,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </form>
       )}
 
-      {/* Tab 2: Team Members & Roles */}
+      {/* Tab 2: Team Members & Invites */}
       {activeTab === 'members' && (
-        <div className="p-5 rounded-xl bg-white border border-slate-200/80 shadow-xs space-y-4">
-          <div className="text-xs text-slate-400">
-            Manage your team members and their permission levels (Admin, Manager, Member).
-          </div>
-
-          <div className="divide-y divide-slate-100">
-            {members.map((m) => (
-              <div key={m.userId} className="flex items-center justify-between py-2.5">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={
-                      m.user.avatarUrl ||
-                      `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
-                        m.user.name
-                      )}`
-                    }
-                    alt=""
-                    className="w-8 h-8 rounded-full object-cover"
-                  />
-                  <div>
-                    <div className="font-semibold text-xs text-slate-800">
-                      {m.user.name}
-                    </div>
-                    <div className="text-[11px] text-slate-400">{m.user.email}</div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <select
-                    value={m.role}
-                    onChange={(e) => handleRoleChange(m.userId, e.target.value as Role)}
-                    className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 cursor-pointer"
-                  >
-                    <option value="MEMBER">Member</option>
-                    <option value="MANAGER">Manager</option>
-                    <option value="ADMIN">Admin</option>
-                  </select>
-
-                  <button
-                    onClick={() => handleRemoveMember(m.userId)}
-                    title="Remove Member"
-                    className="p-1 text-slate-400 hover:text-red-500 rounded-lg transition"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <WorkspaceMembersSettings
+          workspace={workspace}
+          members={members}
+          onWorkspaceUpdated={onWorkspaceUpdated}
+          onRefreshMembers={onRefreshMembers}
+        />
       )}
 
       {/* Tab 3: Personal Settings & Notification Preferences */}

@@ -54,12 +54,24 @@ export interface Workspace {
   members?: WorkspaceMember[];
   spaces?: Space[];
   projects?: Project[];
-  currentUserRole?: Role;
+  invitations?: WorkspaceInvitation[];
   _count?: {
     members: number;
     spaces?: number;
     projects?: number;
   };
+}
+
+export interface WorkspaceInvitation {
+  id: string;
+  workspaceId: string;
+  email: string;
+  role: Role;
+  token: string;
+  status: 'PENDING' | 'ACCEPTED' | 'EXPIRED';
+  invitedById?: string | null;
+  expiresAt: string;
+  createdAt: string;
 }
 
 export interface Space {

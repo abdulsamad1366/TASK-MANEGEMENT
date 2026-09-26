@@ -114,11 +114,18 @@ class ApiClient {
     this.request<any>(`/workspaces/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
   inviteMember = (workspaceId: string, data: { email: string; role: string }) =>
     this.request<any>(`/workspaces/${workspaceId}/invite`, { method: 'POST', body: JSON.stringify(data) });
-  batchInviteMembers = (workspaceId: string, data: { emails: string[]; role?: string }) =>
+  batchInviteMembers = (
+    workspaceId: string,
+    data: { invites?: { email: string; role?: string }[]; emails?: string[]; role?: string }
+  ) =>
     this.request<any>(`/workspaces/${workspaceId}/invites/batch`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  revokeInvitation = (workspaceId: string, inviteId: string) =>
+    this.request<any>(`/workspaces/${workspaceId}/invites/${inviteId}`, { method: 'DELETE' });
+  regenerateInviteCode = (workspaceId: string) =>
+    this.request<any>(`/workspaces/${workspaceId}/join-link/regenerate`, { method: 'POST' });
 
   // Invitations
   getInvitation = (token: string) => this.request<any>(`/invitations/${token}`);

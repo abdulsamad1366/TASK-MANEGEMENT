@@ -7,6 +7,8 @@ import {
   updateWorkspace,
   inviteMember,
   batchInviteMembers,
+  revokeInvitation,
+  regenerateInviteCode,
   updateMemberRole,
   removeMember,
 } from '../controllers/workspaceController';
@@ -24,6 +26,8 @@ router.get('/:id', getWorkspace);
 router.patch('/:id', requireWorkspaceRole(['ADMIN']), updateWorkspace);
 router.post('/:id/invite', requireWorkspaceRole(['ADMIN', 'MANAGER']), inviteMember);
 router.post('/:id/invites/batch', requireWorkspaceRole(['ADMIN', 'MANAGER']), batchInviteMembers);
+router.delete('/:id/invites/:inviteId', requireWorkspaceRole(['ADMIN', 'MANAGER']), revokeInvitation);
+router.post('/:id/join-link/regenerate', requireWorkspaceRole(['ADMIN']), regenerateInviteCode);
 router.patch('/:id/members/:memberId', requireWorkspaceRole(['ADMIN']), updateMemberRole);
 router.delete('/:id/members/:memberId', requireWorkspaceRole(['ADMIN']), removeMember);
 

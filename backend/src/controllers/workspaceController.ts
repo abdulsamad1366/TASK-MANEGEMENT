@@ -384,6 +384,31 @@ export const updateMemberRole = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid role' });
     }
 
+    const targetMember = await prisma.workspaceMember.findUnique({
+      where: {
+        workspaceId_userId: {
+          workspaceId,
+          userId: memberId,
+        },
+      },
+    });
+
+    if (!targetMember) {
+      return res.status(404).json({ error: 'Member not found in workspace' });
+    }
+
+    // Safety: Cannot demote the only Admin
+    if (targetMember.role === 'ADMIN' && role !== 'ADMIN') {
+      const adminCount = await prisma.workspaceMember.count({
+        where: { workspaceId, role: 'ADMIN' },
+      });
+      if (adminCount <= 1) {
+        return res.status(400).json({
+          error: 'Cannot change the role of the only Admin. Assign another Admin first.',
+        });
+      }
+    }
+
     const updated = await prisma.workspaceMember.update({
       where: {
         workspaceId_userId: {
@@ -419,6 +444,31 @@ export const removeMember = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Workspace owner cannot be removed' });
     }
 
+    const targetMember = await prisma.workspaceMember.findUnique({
+      where: {
+        workspaceId_userId: {
+          workspaceId,
+          userId: memberId,
+        },
+      },
+    });
+
+    if (!targetMember) {
+      return res.status(404).json({ error: 'Member not found in workspace' });
+    }
+
+    // Safety: Cannot remove the only Admin
+    if (targetMember.role === 'ADMIN') {
+      const adminCount = await prisma.workspaceMember.count({
+        where: { workspaceId, role: 'ADMIN' },
+      });
+      if (adminCount <= 1) {
+        return res.status(400).json({
+          error: 'Cannot remove the only Admin in this workspace. Assign another Admin first.',
+        });
+      }
+    }
+
     await prisma.workspaceMember.delete({
       where: {
         workspaceId_userId: {
@@ -438,10 +488,23 @@ export const removeMember = async (req: Request, res: Response) => {
 export const batchInviteMembers = async (req: Request, res: Response) => {
   try {
     const { id: workspaceId } = req.params;
-    const { emails, role = 'MEMBER' } = req.body;
+    // Support both { invites: [{ email, role }] } and { emails: string[], role?: string }
+    const { invites, emails, role: defaultRole = 'MEMBER' } = req.body;
 
-    if (!Array.isArray(emails) || emails.length === 0) {
-      return res.status(400).json({ error: 'Please provide a non-empty list of emails' });
+    let inviteList: { email: string; role: any }[] = [];
+
+    if (Array.isArray(invites) && invites.length > 0) {
+      inviteList = invites.map((inv: any) => ({
+        email: String(inv.email).trim().toLowerCase(),
+        role: inv.role || defaultRole,
+      }));
+    } else if (Array.isArray(emails) && emails.length > 0) {
+      inviteList = emails.map((em: any) => ({
+        email: String(em).trim().toLowerCase(),
+        role: defaultRole,
+      }));
+    } else {
+      return res.status(400).json({ error: 'Please provide at least one valid email to invite' });
     }
 
     const workspace = await prisma.workspace.findUnique({
@@ -458,8 +521,9 @@ export const batchInviteMembers = async (req: Request, res: Response) => {
     const results = [];
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    for (const rawEmail of emails) {
-      const email = String(rawEmail).trim().toLowerCase();
+    for (const item of inviteList) {
+      const email = item.email;
+      const role = item.role;
       if (!email || !email.includes('@')) continue;
 
       // Check if user already exists
@@ -495,6 +559,15 @@ export const batchInviteMembers = async (req: Request, res: Response) => {
         `${workspaceId}:${email}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`
       ).toString('base64url');
 
+      // Remove any prior pending invites for this email to avoid stale duplicates
+      await prisma.workspaceInvitation.deleteMany({
+        where: {
+          workspaceId,
+          email,
+          status: 'PENDING',
+        },
+      });
+
       const invitation = await prisma.workspaceInvitation.create({
         data: {
           workspaceId,
@@ -508,7 +581,7 @@ export const batchInviteMembers = async (req: Request, res: Response) => {
       });
 
       console.log(`[EMAIL INVITE] Dispatched invite to ${email} for workspace ${workspace.name}. Link: /invite/${token}`);
-      results.push({ email, invitation, inviteLink: `/invite/${token}` });
+      results.push({ email, role, invitation, inviteLink: `/invite/${token}` });
     }
 
     return res.status(201).json({
@@ -518,6 +591,68 @@ export const batchInviteMembers = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('batchInviteMembers error:', error);
     return res.status(500).json({ error: 'Failed to process team invitations' });
+  }
+};
+
+export const revokeInvitation = async (req: Request, res: Response) => {
+  try {
+    const { id: workspaceId, inviteId } = req.params;
+
+    const invite = await prisma.workspaceInvitation.findFirst({
+      where: { id: inviteId, workspaceId },
+    });
+
+    if (!invite) {
+      return res.status(404).json({ error: 'Invitation not found' });
+    }
+
+    await prisma.workspaceInvitation.delete({
+      where: { id: inviteId },
+    });
+
+    return res.status(200).json({ message: 'Invitation revoked successfully' });
+  } catch (error) {
+    console.error('revokeInvitation error:', error);
+    return res.status(500).json({ error: 'Failed to revoke invitation' });
+  }
+};
+
+export const regenerateInviteCode = async (req: Request, res: Response) => {
+  try {
+    const { id: workspaceId } = req.params;
+
+    const workspace = await prisma.workspace.findUnique({
+      where: { id: workspaceId },
+    });
+
+    if (!workspace) {
+      return res.status(404).json({ error: 'Workspace not found' });
+    }
+
+    const prefix = workspace.slug ? workspace.slug.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8) : 'FLOW';
+    const newCode = `${prefix}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+    const updated = await prisma.workspace.update({
+      where: { id: workspaceId },
+      data: { inviteCode: newCode },
+      include: {
+        members: {
+          include: {
+            user: { select: { id: true, name: true, email: true, avatarUrl: true, role: true } },
+          },
+        },
+        invitations: true,
+      },
+    });
+
+    return res.status(200).json({
+      message: 'Invite link regenerated successfully',
+      workspace: updated,
+      inviteCode: newCode,
+    });
+  } catch (error) {
+    console.error('regenerateInviteCode error:', error);
+    return res.status(500).json({ error: 'Failed to regenerate invite link' });
   }
 };
 

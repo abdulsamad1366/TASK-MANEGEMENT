@@ -23,6 +23,7 @@ import { FlowdeskLogo } from './FlowdeskLogo';
 
 interface SidebarProps {
   currentTab: 'dashboard' | 'project' | 'settings' | 'global-tasks';
+  settingsTab?: 'workspace' | 'members' | 'personal';
   spaces: Space[];
   selectedSpaceId: string | null;
   selectedProjectId: string | null;
@@ -42,6 +43,7 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({
   currentTab,
+  settingsTab = 'workspace',
   spaces,
   selectedSpaceId,
   selectedProjectId,
@@ -343,16 +345,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="space-y-1">
           <button
             onClick={handleInvite}
-            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
+            className={cn(
+              'w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium transition',
+              currentTab === 'settings' && settingsTab === 'members'
+                ? 'bg-purple-50 text-[#7B68EE] font-bold'
+                : 'text-slate-600 hover:bg-slate-100'
+            )}
           >
-            <Users className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Invite Teammates</span>
+            <Users className="w-3.5 h-3.5 text-[#7B68EE]" />
+            <span>Workspace Members</span>
           </button>
           <button
             onClick={() => handleSelectTab('settings')}
             className={cn(
               'w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium transition',
-              currentTab === 'settings'
+              currentTab === 'settings' && settingsTab !== 'members'
                 ? 'bg-purple-50 text-[#7B68EE] font-bold'
                 : 'text-slate-600 hover:bg-slate-100'
             )}
