@@ -5,7 +5,6 @@ import api from '../lib/api';
 import { Task, Project } from '../types';
 import {
   CheckCircle2,
-  Clock,
   AlertCircle,
   TrendingUp,
   Users,
@@ -67,7 +66,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   if (isLoading || !data) {
     return (
       <div className="flex items-center justify-center p-24">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500" />
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#7B68EE] border-t-transparent" />
       </div>
     );
   }
@@ -76,84 +75,84 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const team = data.team || {};
 
   return (
-    <div className="space-y-6 pb-12 select-none animate-fadeIn">
+    <div className="space-y-5 pb-12 select-none animate-fadeIn">
       {/* Title */}
       <div>
-        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-          Executive Dashboard & Reporting
+        <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+          Executive Dashboard & Analytics
         </h1>
-        <p className="text-xs text-slate-400">
-          Real-time metrics, workload distribution, and sprint burndown trajectory
+        <p className="text-xs text-slate-500">
+          Real-time team velocity, workload distribution, and sprint burndown trajectory
         </p>
       </div>
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
         {/* Card 1: My Pending Tasks */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">My Tasks</span>
-            <CheckCircle2 className="w-4 h-4 text-indigo-500" />
+        <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-xs">
+          <div className="flex items-center justify-between text-slate-400 mb-1.5">
+            <span className="text-[11px] font-bold uppercase tracking-wider">My Tasks</span>
+            <CheckCircle2 className="w-4 h-4 text-[#7B68EE]" />
           </div>
-          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+          <div className="text-2xl font-bold text-slate-900">
             {personal.pending || 0}
           </div>
-          <div className="text-[11px] text-slate-400 mt-1">
+          <div className="text-[11px] text-slate-400 mt-0.5">
             {personal.completed || 0} tasks completed
           </div>
         </div>
 
         {/* Card 2: Overdue Tasks */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Overdue</span>
-            <AlertCircle className="w-4 h-4 text-rose-500" />
+        <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-xs">
+          <div className="flex items-center justify-between text-slate-400 mb-1.5">
+            <span className="text-[11px] font-bold uppercase tracking-wider">Overdue</span>
+            <AlertCircle className="w-4 h-4 text-red-500" />
           </div>
-          <div className="text-2xl font-bold text-rose-600 dark:text-rose-400">
+          <div className="text-2xl font-bold text-red-600">
             {personal.overdue || 0}
           </div>
-          <div className="text-[11px] text-slate-400 mt-1">Requires immediate attention</div>
+          <div className="text-[11px] text-slate-400 mt-0.5">Needs immediate attention</div>
         </div>
 
         {/* Card 3: Due This Week */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Due This Week</span>
+        <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-xs">
+          <div className="flex items-center justify-between text-slate-400 mb-1.5">
+            <span className="text-[11px] font-bold uppercase tracking-wider">Due This Week</span>
             <Calendar className="w-4 h-4 text-amber-500" />
           </div>
-          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+          <div className="text-2xl font-bold text-slate-900">
             {personal.dueThisWeek || 0}
           </div>
-          <div className="text-[11px] text-slate-400 mt-1">
+          <div className="text-[11px] text-slate-400 mt-0.5">
             {personal.dueToday || 0} due today
           </div>
         </div>
 
         {/* Card 4: Overall Completion Rate */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Completion Rate</span>
+        <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-xs">
+          <div className="flex items-center justify-between text-slate-400 mb-1.5">
+            <span className="text-[11px] font-bold uppercase tracking-wider">Completion Rate</span>
             <TrendingUp className="w-4 h-4 text-emerald-500" />
           </div>
-          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+          <div className="text-2xl font-bold text-slate-900">
             {team.completionRate || 0}%
           </div>
-          <div className="text-[11px] text-slate-400 mt-1">
-            {team.completedTasks || 0} of {team.totalTasks || 0} total tasks
+          <div className="text-[11px] text-slate-400 mt-0.5">
+            {team.completedTasks || 0} of {team.totalTasks || 0} tasks
           </div>
         </div>
       </div>
 
       {/* Middle Section: Burndown Velocity Chart & Priority Distribution */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Left 2 Cols: Burndown Chart */}
-        <div className="lg:col-span-2 p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="lg:col-span-2 p-5 rounded-xl bg-white border border-slate-200/80 shadow-xs">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+              <h3 className="font-bold text-xs text-slate-900 uppercase tracking-wider">
                 Sprint Burndown Chart
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-[11px] text-slate-400">
                 Ideal remaining velocity vs actual team progress
               </p>
             </div>
@@ -163,7 +162,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <select
                 value={selectedBurndownProjectId}
                 onChange={(e) => setSelectedBurndownProjectId(e.target.value)}
-                className="text-xs px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none cursor-pointer"
+                className="text-xs px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-800 outline-none cursor-pointer"
               >
                 {projects.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -176,32 +175,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* SVG Burndown Chart Render */}
           {burndown?.burndown ? (
-            <div className="relative pt-4">
-              <div className="h-56 w-full flex items-end justify-between gap-2 px-2 pb-6 border-b border-l border-slate-200 dark:border-slate-700">
+            <div className="relative pt-3">
+              <div className="h-52 w-full flex items-end justify-between gap-2 px-2 pb-6 border-b border-l border-slate-200">
                 {burndown.burndown.map((pt: any, i: number) => {
-                  const maxVal = Math.max(...burndown.burndown.map((b: any) => Math.max(b.ideal, b.actual, 1)));
-                  const idealHeight = (pt.ideal / maxVal) * 180;
-                  const actualHeight = (pt.actual / maxVal) * 180;
+                  const maxVal = Math.max(
+                    ...burndown.burndown.map((b: any) => Math.max(b.ideal, b.actual, 1))
+                  );
+                  const idealHeight = (pt.ideal / maxVal) * 160;
+                  const actualHeight = (pt.actual / maxVal) * 160;
 
                   return (
                     <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
                       {/* Tooltip on hover */}
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-12 bg-slate-900 text-white text-[10px] px-2 py-1 rounded shadow-lg pointer-events-none whitespace-nowrap z-20">
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-10 bg-slate-800 text-white text-[10px] px-2 py-1 rounded shadow-md pointer-events-none whitespace-nowrap z-20">
                         {pt.date}: Actual {pt.actual}, Ideal {pt.ideal}
                       </div>
 
                       {/* Dual bars */}
-                      <div className="w-full flex items-end justify-center gap-1 h-48">
+                      <div className="w-full flex items-end justify-center gap-1 h-44">
                         {/* Ideal Guide Bar */}
                         <div
                           style={{ height: `${idealHeight}px` }}
-                          className="w-1.5 bg-slate-300 dark:bg-slate-700 rounded-t"
+                          className="w-1.5 bg-slate-200 rounded-t"
                           title={`Ideal: ${pt.ideal}`}
                         />
                         {/* Actual Bar */}
                         <div
                           style={{ height: `${actualHeight}px` }}
-                          className="w-2.5 bg-indigo-500 rounded-t shadow-xs"
+                          className="w-2.5 bg-[#7B68EE] rounded-t shadow-xs"
                           title={`Actual: ${pt.actual}`}
                         />
                       </div>
@@ -214,52 +215,52 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 })}
               </div>
 
-              <div className="flex items-center justify-center gap-6 mt-4 text-xs">
+              <div className="flex items-center justify-center gap-6 mt-3 text-xs">
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded bg-indigo-500" />
-                  <span className="text-slate-600 dark:text-slate-400">Actual Tasks Remaining</span>
+                  <span className="w-2.5 h-2.5 rounded bg-[#7B68EE]" />
+                  <span className="text-slate-600">Actual Tasks Remaining</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded bg-slate-300 dark:bg-slate-700" />
-                  <span className="text-slate-600 dark:text-slate-400">Ideal Guideline</span>
+                  <span className="w-2.5 h-2.5 rounded bg-slate-200" />
+                  <span className="text-slate-600">Ideal Guideline</span>
                 </div>
               </div>
             </div>
           ) : (
             <div className="h-48 flex items-center justify-center text-xs text-slate-400 italic">
-              Loading burndown dataset...
+              No burndown data available for this project
             </div>
           )}
         </div>
 
         {/* Right 1 Col: Priority Distribution */}
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        <div className="p-5 rounded-xl bg-white border border-slate-200/80 shadow-xs flex flex-col justify-between">
           <div>
-            <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 mb-1">
+            <h3 className="font-bold text-xs text-slate-900 uppercase tracking-wider mb-1">
               Priority Distribution
             </h3>
-            <p className="text-xs text-slate-400 mb-4">Breakdown across all active projects</p>
+            <p className="text-[11px] text-slate-400 mb-4">Active task breakdown</p>
 
             <div className="space-y-3">
-              {['URGENT', 'HIGH', 'MEDIUM', 'LOW'].map((pKey) => {
-                const count =
-                  team.tasksByPriority?.find((p: any) => p.priority === pKey)?.count || 0;
-                const pct = team.totalTasks > 0 ? Math.round((count / team.totalTasks) * 100) : 0;
-                const pStyle = getPriorityBadge(pKey as any);
+              {[
+                { label: 'Urgent', count: team.priorityBreakdown?.URGENT || 0, color: 'bg-red-500' },
+                { label: 'High', count: team.priorityBreakdown?.HIGH || 0, color: 'bg-amber-500' },
+                { label: 'Normal', count: team.priorityBreakdown?.MEDIUM || 0, color: 'bg-[#7B68EE]' },
+                { label: 'Low', count: team.priorityBreakdown?.LOW || 0, color: 'bg-slate-400' },
+              ].map((p, idx) => {
+                const total = team.totalTasks || 1;
+                const pct = Math.round((p.count / total) * 100);
 
                 return (
-                  <div key={pKey} className="space-y-1">
-                    <div className="flex justify-between text-xs font-semibold">
-                      <span className={pStyle.text}>{pStyle.label}</span>
-                      <span className="text-slate-400">
-                        {count} ({pct}%)
+                  <div key={idx} className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="font-medium text-slate-700">{p.label}</span>
+                      <span className="text-slate-500 font-mono">
+                        {p.count} ({pct}%)
                       </span>
                     </div>
-                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                      <div
-                        className={cn('h-full rounded-full transition-all duration-500', pStyle.dot)}
-                        style={{ width: `${pct}%` }}
-                      />
+                    <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                      <div className={cn('h-full rounded-full', p.color)} style={{ width: `${pct}%` }} />
                     </div>
                   </div>
                 );
@@ -269,101 +270,90 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Bottom Section: Team Workload Table & My Upcoming Tasks */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Bottom Section: Team Workload & Tasks per Project */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Team Workload */}
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="p-5 rounded-xl bg-white border border-slate-200/80 shadow-xs">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
-                Team Workload & Capacity
+              <h3 className="font-bold text-xs text-slate-900 uppercase tracking-wider">
+                Team Workload
               </h3>
-              <p className="text-xs text-slate-400">Distribution of assigned work per teammate</p>
+              <p className="text-[11px] text-slate-400">Assigned task distribution per member</p>
             </div>
             <Users className="w-4 h-4 text-slate-400" />
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {team.workload?.map((w: any) => (
               <div
                 key={w.user.id}
-                className="flex items-center justify-between p-3 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 text-xs"
+                className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50/70 text-xs"
               >
                 <div className="flex items-center gap-2.5">
-                  <img
-                    src={
-                      w.user.avatarUrl ||
-                      `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
-                        w.user.name
-                      )}`
-                    }
-                    alt=""
-                    className="w-7 h-7 rounded-full object-cover"
-                  />
-                  <div>
-                    <div className="font-semibold text-slate-800 dark:text-slate-200">
-                      {w.user.name}
+                  {w.user.avatarUrl ? (
+                    <img
+                      src={w.user.avatarUrl}
+                      alt={w.user.name}
+                      className="w-6 h-6 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-[#7B68EE] text-white font-bold flex items-center justify-center text-[10px]">
+                      {w.user.name.charAt(0)}
                     </div>
+                  )}
+                  <div>
+                    <div className="font-semibold text-slate-800">{w.user.name}</div>
                     <div className="text-[10px] text-slate-400">{w.user.email}</div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <span className="text-slate-500">
-                    <strong className="text-slate-800 dark:text-slate-200">{w.pending}</strong> active
-                  </span>
-                  <span className="text-emerald-500 font-semibold">
-                    {w.completed} done
-                  </span>
+                <div className="text-right">
+                  <div className="font-bold text-slate-800">
+                    <strong>{w.pending}</strong> active
+                  </div>
+                  <div className="text-[10px] text-emerald-600">{w.completed} done</div>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* My Priority Action Items */}
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+        {/* Assigned to Me / Quick Actions */}
+        <div className="p-5 rounded-xl bg-white border border-slate-200/80 shadow-xs">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
-                My Priority Items
+              <h3 className="font-bold text-xs text-slate-900 uppercase tracking-wider">
+                Recent Tasks
               </h3>
-              <p className="text-xs text-slate-400">Tasks assigned directly to you</p>
+              <p className="text-[11px] text-slate-400">Your currently active assignments</p>
             </div>
+            <Layers className="w-4 h-4 text-slate-400" />
           </div>
 
-          <div className="space-y-2">
-            {personal.tasks?.slice(0, 5).map((t: any) => (
+          <div className="space-y-1.5">
+            {personal.assignedTasks?.slice(0, 5).map((t: Task) => (
               <div
                 key={t.id}
                 onClick={() => onSelectTask(t)}
-                className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition text-xs group"
+                className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 cursor-pointer transition text-xs group"
               >
-                <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                  <span className="font-mono text-slate-400 font-bold shrink-0">
-                    {t.project?.key ? `${t.project.key}-${t.taskNumber}` : '#'}
+                <div className="flex items-center gap-2 truncate">
+                  <span className="font-mono text-[10px] text-slate-400 shrink-0">
+                    {t.project?.key ? `${t.project.key}-${t.taskNumber}` : `#${t.taskNumber}`}
                   </span>
-                  <span className="font-medium text-slate-800 dark:text-slate-200 truncate group-hover:text-indigo-600 transition">
+                  <span className="font-medium text-slate-800 truncate group-hover:text-[#7B68EE] transition">
                     {t.title}
                   </span>
                 </div>
 
-                <span
-                  className={cn(
-                    'text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0',
-                    getPriorityBadge(t.priority).bg,
-                    getPriorityBadge(t.priority).text,
-                    getPriorityBadge(t.priority).border
-                  )}
-                >
-                  {t.priority}
-                </span>
+                <ArrowUpRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-[#7B68EE] shrink-0 transition" />
               </div>
             ))}
 
-            {(!personal.tasks || personal.tasks.length === 0) && (
+            {(!personal.assignedTasks || personal.assignedTasks.length === 0) && (
               <div className="py-8 text-center text-xs text-slate-400 italic">
-                No active tasks assigned to you right now. Great job!
+                No active tasks assigned to you right now
               </div>
             )}
           </div>

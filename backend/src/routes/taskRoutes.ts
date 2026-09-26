@@ -14,13 +14,16 @@ import {
   removeDependency,
 } from '../controllers/taskController';
 import { createComment, deleteComment } from '../controllers/commentController';
-import { uploadAttachment, deleteAttachment } from '../controllers/attachmentController';
+import { uploadAttachment, deleteAttachment, uploadMedia } from '../controllers/attachmentController';
 import { upload } from '../services/storage';
 import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
 router.use(authenticate);
+
+// Standalone media upload (for chat images, task attachments, cover photos)
+router.post('/media', upload.single('file'), uploadMedia);
 
 // Tasks CRUD & Move
 router.get('/', listTasks);

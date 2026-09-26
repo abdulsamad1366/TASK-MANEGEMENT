@@ -53,34 +53,34 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
-      <div className="relative w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-[2px] animate-fadeIn">
+      <div className="relative w-full max-w-md bg-white border border-slate-200/80 rounded-2xl shadow-xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div className="flex items-center gap-2">
-            <UserPlus className="w-5 h-5 text-indigo-500" />
-            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+            <UserPlus className="w-5 h-5 text-[#7B68EE]" />
+            <h2 className="text-sm font-bold text-slate-900">
               Invite Team Member
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition"
+            className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         <div className="p-6 space-y-4">
           {error && (
-            <div className="p-3 text-xs bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 rounded-xl text-rose-600 dark:text-rose-400">
+            <div className="p-3 text-xs bg-red-50 border border-red-200 rounded-xl text-red-600">
               {error}
             </div>
           )}
 
           {inviteLink ? (
             <div className="space-y-4">
-              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 rounded-xl text-xs text-emerald-700 dark:text-emerald-300">
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-700">
                 Invitation created! Share this link with your teammate to join:
               </div>
 
@@ -89,21 +89,21 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                   type="text"
                   readOnly
                   value={inviteLink}
-                  className="flex-1 text-xs px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 select-all font-mono"
+                  className="flex-1 text-xs px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 select-all font-mono"
                 />
                 <button
                   onClick={copyToClipboard}
-                  className="px-3.5 py-2 bg-indigo-600 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5"
+                  className="px-3.5 py-2 bg-[#7B68EE] hover:bg-[#6C5CE7] text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
                 >
                   {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                   <span>{copied ? 'Copied' : 'Copy'}</span>
                 </button>
               </div>
 
-              <div className="flex justify-end pt-2">
+              <div className="flex justify-end">
                 <button
                   onClick={onClose}
-                  className="px-4 py-2 bg-slate-200 dark:bg-slate-800 rounded-xl text-xs font-semibold"
+                  className="px-4 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg"
                 >
                   Done
                 </button>
@@ -112,49 +112,48 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Email Address *
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Email Address
                 </label>
                 <input
                   type="email"
                   required
-                  autoFocus
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="colleague@company.com"
-                  className="w-full text-sm px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full text-xs px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 outline-none focus:ring-1 focus:ring-[#7B68EE]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Role
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Role & Permissions
                 </label>
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value as Role)}
-                  className="w-full text-xs px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none cursor-pointer"
+                  className="w-full text-xs px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 outline-none focus:ring-1 focus:ring-[#7B68EE]"
                 >
-                  <option value="MEMBER">Member (Can view, create and edit tasks)</option>
-                  <option value="MANAGER">Manager (Can manage projects and invite teammates)</option>
-                  <option value="ADMIN">Admin (Full workspace control & settings)</option>
+                  <option value="MEMBER">Member (Can create, view, and comment on tasks)</option>
+                  <option value="MANAGER">Manager (Can manage spaces, projects, and lists)</option>
+                  <option value="ADMIN">Admin (Full administrative access and member billing)</option>
                 </select>
               </div>
 
-              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition"
+                  className="px-4 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold disabled:opacity-50 transition shadow-sm"
+                  disabled={isSubmitting || !email.trim()}
+                  className="px-4 py-1.5 bg-[#7B68EE] hover:bg-[#6C5CE7] text-white rounded-lg text-xs font-bold transition disabled:opacity-50 shadow-xs"
                 >
-                  {isSubmitting ? 'Sending...' : 'Send Invite'}
+                  {isSubmitting ? 'Generating Invite...' : 'Send Invitation'}
                 </button>
               </div>
             </form>

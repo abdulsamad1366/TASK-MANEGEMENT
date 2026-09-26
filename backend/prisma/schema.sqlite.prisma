@@ -14,7 +14,7 @@ model User {
   name                  String
   avatarUrl             String?
   role                  String              @default("MEMBER") // ADMIN, MANAGER, MEMBER
-  notificationSettings  String?             @default("{\"email\":true,\"assignments\":true,\"comments\":true,\"mentions\":true,\"dueDates\":true}")
+  notificationSettings  String?             @default("{\"email\":true,\"assignments\":true,\"comments\":true,\"mentions\":true,\"dueDates\":true,\"chat\":true}")
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
 
@@ -42,7 +42,7 @@ model Workspace {
 
   members     WorkspaceMember[]
   invitations WorkspaceInvitation[]
-  projects    Project[]
+  spaces      Space[]
 }
 
 model WorkspaceMember {
@@ -71,70 +71,101 @@ model WorkspaceInvitation {
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
-model Project {
-  id          String        @id @default(cuid())
+// ClickUp Hierarchy: Workspace > Space > Project > List > Task
+model Space {
+  id          String    @id @default(cuid())
   workspaceId String
-  name        String
-  key         String
+  name        String    // e.g. "Engineering", "Design", "Marketing"
+  color       String    @default("#7B68EE") // ClickUp signature purple
+  icon        String?   @default("rocket")
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  projects    Project[]
+}
+
+model Project {
+  id          String     @id @default(cuid())
+  spaceId     String
+  name        String     // e.g. "Mobile App", "Web Platform"
+  key         String     // e.g. "APP", "WEB"
   description String?
-  color       String        @default("#6366f1")
-  icon        String?       @default("folder")
+  color       String     @default("#7B68EE")
+  icon        String?    @default("folder")
+  order       Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  space       Space      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  lists       TaskList[]
+
+  @@unique([spaceId, key])
+}
+
+model TaskList {
+  id          String        @id @default(cuid())
+  projectId   String
+  name        String        // e.g. "Sprint 1", "Product Backlog", "Roadmap"
+  description String?
+  order       Int           @default(0)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
-  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   columns     BoardColumn[]
   tasks       Task[]
-
-  @@unique([workspaceId, key])
 }
 
 model BoardColumn {
-  id          String   @id @default(cuid())
-  projectId   String
-  name        String
-  color       String   @default("#94a3b8")
-  order       Int      @default(0)
-  isCompleted Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id          String    @id @default(cuid())
+  listId      String
+  name        String    // "To Do", "In Progress", "In Review", "Done"
+  color       String    @default("#94a3b8")
+  order       Int       @default(0)
+  isCompleted Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  list        TaskList  @relation(fields: [listId], references: [id], onDelete: Cascade)
   tasks       Task[]
 }
 
 model Task {
   id             String          @id @default(cuid())
-  projectId      String
+  listId         String
   columnId       String
   taskNumber     Int             @default(1)
   title          String
-  description    String?
+  description    String?         // Rich Markdown text
   priority       String          @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
   order          Float           @default(0)
   startDate      DateTime?
   dueDate        DateTime?
-  labels         String          @default("[]")
+  timeEstimate   String?         // e.g. "2h 30m"
+  coverImage     String?         // Card cover image URL
+  labels         String          @default("[]") // JSON array of tag strings
   isRecurring    Boolean         @default(false)
   recurrenceRule String          @default("NONE") // NONE, DAILY, WEEKLY, MONTHLY
   creatorId      String
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
-  project        Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  list           TaskList        @relation(fields: [listId], references: [id], onDelete: Cascade)
   column         BoardColumn     @relation(fields: [columnId], references: [id], onDelete: Cascade)
   creator        User            @relation("TaskCreator", fields: [creatorId], references: [id], onDelete: Cascade)
   
   assignees      TaskAssignee[]
   subtasks       Subtask[]
-  comments       Comment[]
-  attachments    Attachment[]
-  activityLogs   ActivityLog[]
+  comments       Comment[]       // In-task chat & discussion
+  attachments    Attachment[]    // Uploaded files & images
+  activityLogs   ActivityLog[]   // Dedicated audit trail
 
   blocking       TaskDependency[] @relation("BlockingTask")
   blockedBy      TaskDependency[] @relation("BlockedByTask")
 
-  @@index([projectId, columnId])
+  @@index([listId, columnId])
 }
 
 model TaskAssignee {
@@ -163,8 +194,8 @@ model Subtask {
 
 model TaskDependency {
   id              String   @id @default(cuid())
-  taskId          String
-  dependsOnTaskId String
+  taskId          String   // The task that is blocked
+  dependsOnTaskId String   // The task blocking it
   createdAt       DateTime @default(now())
 
   task            Task     @relation("BlockedByTask", fields: [taskId], references: [id], onDelete: Cascade)
@@ -178,11 +209,14 @@ model Comment {
   taskId    String
   userId    String
   content   String
+  imageUrl  String?  // In-chat shared image URL
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
 }
 
 model Attachment {
@@ -193,18 +227,21 @@ model Attachment {
   fileUrl      String
   fileType     String
   fileSize     Int
+  isImage      Boolean  @default(false)
   createdAt    DateTime @default(now())
 
   task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   uploadedBy   User     @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
 }
 
 model ActivityLog {
   id        String   @id @default(cuid())
   taskId    String
   userId    String
-  action    String
-  details   String
+  action    String   // "STATUS_CHANGE", "ASSIGNED", "PRIORITY_CHANGE", "TIME_ESTIMATE", etc.
+  details   String   // JSON string details
   createdAt DateTime @default(now())
 
   task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
@@ -215,12 +252,12 @@ model ActivityLog {
 
 model Notification {
   id         String   @id @default(cuid())
-  userId     String
-  actorId    String?
-  type       String   // ASSIGNMENT, MENTION, DUE_DATE, COMMENT, STATUS_CHANGE
+  userId     String   // recipient
+  actorId    String?  // user who triggered it
+  type       String   // ASSIGNMENT, MENTION, DUE_DATE, CHAT, STATUS_CHANGE
   title      String
   message    String
-  entityType String?
+  entityType String?  // "TASK", "PROJECT", "WORKSPACE", "LIST"
   entityId   String?
   isRead     Boolean  @default(false)
   createdAt  DateTime @default(now())

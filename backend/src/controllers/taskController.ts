@@ -1,11 +1,12 @@
 import { Request, Response } from 'express';
 import prisma from '../config/db';
-import { emitToProject, emitToUser } from '../services/socket';
+import { emitToProject, emitToTask, emitToUser } from '../services/socket';
 
 export const listTasks = async (req: Request, res: Response) => {
   try {
     const {
       projectId,
+      listId,
       workspaceId,
       columnId,
       assigneeId,
@@ -17,13 +18,16 @@ export const listTasks = async (req: Request, res: Response) => {
 
     const where: any = {};
 
-    if (projectId) where.projectId = String(projectId);
+    if (listId) {
+      where.listId = String(listId);
+    } else if (projectId) {
+      where.list = { projectId: String(projectId) };
+    } else if (workspaceId) {
+      where.list = { project: { space: { workspaceId: String(workspaceId) } } };
+    }
+
     if (columnId) where.columnId = String(columnId);
     if (priority) where.priority = String(priority);
-
-    if (workspaceId && !projectId) {
-      where.project = { workspaceId: String(workspaceId) };
-    }
 
     if (assigneeId) {
       where.assignees = {
@@ -47,8 +51,10 @@ export const listTasks = async (req: Request, res: Response) => {
       where.dueDate = { lt: now };
       where.column = { isCompleted: false };
     } else if (dueDateFilter === 'today') {
-      const startOfDay = new Date(now.setHours(0, 0, 0, 0));
-      const endOfDay = new Date(now.setHours(23, 59, 59, 999));
+      const startOfDay = new Date(now);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(now);
+      endOfDay.setHours(23, 59, 59, 999);
       where.dueDate = { gte: startOfDay, lte: endOfDay };
     } else if (dueDateFilter === 'this_week') {
       const endOfWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -59,8 +65,15 @@ export const listTasks = async (req: Request, res: Response) => {
       where,
       orderBy: [{ columnId: 'asc' }, { order: 'asc' }],
       include: {
-        project: {
-          select: { id: true, name: true, key: true, color: true },
+        list: {
+          select: {
+            id: true,
+            name: true,
+            projectId: true,
+            project: {
+              select: { id: true, name: true, key: true, color: true },
+            },
+          },
         },
         column: {
           select: { id: true, name: true, color: true, isCompleted: true },
@@ -74,6 +87,9 @@ export const listTasks = async (req: Request, res: Response) => {
         },
         subtasks: {
           orderBy: { order: 'asc' },
+        },
+        attachments: {
+          orderBy: { createdAt: 'desc' },
         },
         _count: {
           select: { comments: true, attachments: true },
@@ -95,8 +111,18 @@ export const getTask = async (req: Request, res: Response) => {
     const task = await prisma.task.findUnique({
       where: { id },
       include: {
-        project: {
-          select: { id: true, name: true, key: true, color: true, workspaceId: true },
+        list: {
+          include: {
+            project: {
+              include: {
+                space: {
+                  include: {
+                    workspace: true,
+                  },
+                },
+              },
+            },
+          },
         },
         column: {
           select: { id: true, name: true, color: true, isCompleted: true },
@@ -171,6 +197,7 @@ export const createTask = async (req: Request, res: Response) => {
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
 
     const {
+      listId,
       projectId,
       columnId,
       title,
@@ -178,36 +205,76 @@ export const createTask = async (req: Request, res: Response) => {
       priority = 'MEDIUM',
       startDate,
       dueDate,
+      timeEstimate,
+      coverImage,
       labels = [],
       isRecurring = false,
       recurrenceRule = 'NONE',
       assigneeIds = [],
       subtasks = [],
+      initialAttachments = [],
+      initialComment,
+      initialCommentImage,
     } = req.body;
 
-    if (!projectId || !title) {
-      return res.status(400).json({ error: 'projectId and title are required' });
+    if (!title) {
+      return res.status(400).json({ error: 'Task title is required' });
     }
 
-    // Determine target column if not provided
-    let targetColId = columnId;
-    if (!targetColId) {
-      const defaultCol = await prisma.boardColumn.findFirst({
+    // Determine target TaskList
+    let targetListId = listId;
+    if (!targetListId && projectId) {
+      const defaultList = await prisma.taskList.findFirst({
         where: { projectId },
         orderBy: { order: 'asc' },
       });
-      if (!defaultCol) {
-        return res.status(400).json({ error: 'Project has no columns defined' });
+      if (defaultList) {
+        targetListId = defaultList.id;
       }
-      targetColId = defaultCol.id;
     }
 
-    // Determine sequential task number within project
-    const lastTask = await prisma.task.findFirst({
-      where: { projectId },
-      orderBy: { taskNumber: 'desc' },
+    if (!targetListId) {
+      // Find any list available
+      const anyList = await prisma.taskList.findFirst({
+        orderBy: { order: 'asc' },
+      });
+      if (!anyList) {
+        return res.status(400).json({ error: 'No task list exists to create task under' });
+      }
+      targetListId = anyList.id;
+    }
+
+    // Get list details with project
+    const targetList = await prisma.taskList.findUnique({
+      where: { id: targetListId },
+      include: {
+        columns: { orderBy: { order: 'asc' } },
+        project: true,
+      },
     });
-    const taskNumber = (lastTask?.taskNumber || 100) + 1;
+
+    if (!targetList) {
+      return res.status(404).json({ error: 'Target list not found' });
+    }
+
+    // Determine target column
+    let targetColId = columnId;
+    if (!targetColId || !targetList.columns.some((c) => c.id === targetColId)) {
+      if (targetList.columns.length === 0) {
+        const newCol = await prisma.boardColumn.create({
+          data: { listId: targetListId, name: 'To Do', order: 0, color: '#94A3B8' },
+        });
+        targetColId = newCol.id;
+      } else {
+        targetColId = targetList.columns[0].id;
+      }
+    }
+
+    // Determine sequential task number
+    const countInProject = await prisma.task.count({
+      where: { list: { projectId: targetList.projectId } },
+    });
+    const taskNumber = 100 + countInProject + 1;
 
     // Determine order position in column
     const lastInCol = await prisma.task.findFirst({
@@ -218,7 +285,7 @@ export const createTask = async (req: Request, res: Response) => {
 
     const task = await prisma.task.create({
       data: {
-        projectId,
+        listId: targetListId,
         columnId: targetColId,
         taskNumber,
         title,
@@ -227,6 +294,8 @@ export const createTask = async (req: Request, res: Response) => {
         order,
         startDate: startDate ? new Date(startDate) : null,
         dueDate: dueDate ? new Date(dueDate) : null,
+        timeEstimate: timeEstimate || null,
+        coverImage: coverImage || null,
         labels: Array.isArray(labels) ? JSON.stringify(labels) : String(labels),
         isRecurring,
         recurrenceRule,
@@ -240,10 +309,38 @@ export const createTask = async (req: Request, res: Response) => {
             order: idx,
           })),
         },
+        attachments: {
+          create: (initialAttachments as any[]).map((att) => ({
+            uploadedById: req.user!.id,
+            fileName: att.fileName,
+            fileUrl: att.fileUrl,
+            fileType: att.fileType || 'application/octet-stream',
+            fileSize: att.fileSize || 0,
+            isImage: att.isImage ?? att.fileType?.startsWith('image/'),
+          })),
+        },
+        comments: initialComment
+          ? {
+              create: [
+                {
+                  userId: req.user.id,
+                  content: initialComment,
+                  imageUrl: initialCommentImage || null,
+                },
+              ],
+            }
+          : undefined,
       },
       include: {
-        project: {
-          select: { id: true, name: true, key: true, color: true },
+        list: {
+          select: {
+            id: true,
+            name: true,
+            projectId: true,
+            project: {
+              select: { id: true, name: true, key: true, color: true },
+            },
+          },
         },
         column: {
           select: { id: true, name: true, color: true, isCompleted: true },
@@ -258,6 +355,17 @@ export const createTask = async (req: Request, res: Response) => {
         subtasks: {
           orderBy: { order: 'asc' },
         },
+        attachments: {
+          orderBy: { createdAt: 'desc' },
+        },
+        comments: {
+          include: {
+            user: { select: { id: true, name: true, avatarUrl: true } },
+          },
+        },
+        _count: {
+          select: { comments: true, attachments: true },
+        },
       },
     });
 
@@ -271,7 +379,7 @@ export const createTask = async (req: Request, res: Response) => {
       },
     });
 
-    // Send notifications to assignees
+    // Notify assignees
     for (const assigneeId of assigneeIds) {
       if (assigneeId !== req.user.id) {
         const notif = await prisma.notification.create({
@@ -280,7 +388,7 @@ export const createTask = async (req: Request, res: Response) => {
             actorId: req.user.id,
             type: 'ASSIGNMENT',
             title: 'Assigned to New Task',
-            message: `${req.user.name} assigned you to ${task.project.key}-${task.taskNumber}: ${task.title}`,
+            message: `${req.user.name} assigned you to ${task.list.project.key}-${task.taskNumber}: ${task.title}`,
             entityType: 'TASK',
             entityId: task.id,
           },
@@ -289,7 +397,9 @@ export const createTask = async (req: Request, res: Response) => {
       }
     }
 
-    emitToProject(projectId, 'task:created', task);
+    emitToProject(targetList.projectId, 'task:created', task);
+    emitToTask(task.id, 'task:created', task);
+
     return res.status(201).json({ task });
   } catch (error) {
     console.error('createTask error:', error);
@@ -306,7 +416,12 @@ export const updateTask = async (req: Request, res: Response) => {
       where: { id },
       include: {
         assignees: true,
-        project: { select: { id: true, key: true } },
+        column: true,
+        list: {
+          include: {
+            project: { select: { id: true, key: true } },
+          },
+        },
       },
     });
 
@@ -320,9 +435,13 @@ export const updateTask = async (req: Request, res: Response) => {
       priority,
       startDate,
       dueDate,
+      timeEstimate,
+      coverImage,
       labels,
       isRecurring,
       recurrenceRule,
+      columnId,
+      listId,
       assigneeIds,
     } = req.body;
 
@@ -332,13 +451,17 @@ export const updateTask = async (req: Request, res: Response) => {
     if (priority !== undefined) data.priority = priority;
     if (startDate !== undefined) data.startDate = startDate ? new Date(startDate) : null;
     if (dueDate !== undefined) data.dueDate = dueDate ? new Date(dueDate) : null;
+    if (timeEstimate !== undefined) data.timeEstimate = timeEstimate;
+    if (coverImage !== undefined) data.coverImage = coverImage;
+    if (columnId !== undefined) data.columnId = columnId;
+    if (listId !== undefined) data.listId = listId;
     if (labels !== undefined) {
       data.labels = Array.isArray(labels) ? JSON.stringify(labels) : String(labels);
     }
     if (isRecurring !== undefined) data.isRecurring = isRecurring;
     if (recurrenceRule !== undefined) data.recurrenceRule = recurrenceRule;
 
-    // Handle Assignees diff
+    // Handle Assignees update
     if (Array.isArray(assigneeIds)) {
       await prisma.taskAssignee.deleteMany({ where: { taskId: id } });
       if (assigneeIds.length > 0) {
@@ -360,7 +483,7 @@ export const updateTask = async (req: Request, res: Response) => {
             actorId: req.user.id,
             type: 'ASSIGNMENT',
             title: 'Assigned to Task',
-            message: `${req.user.name} assigned you to ${existingTask.project.key}-${existingTask.taskNumber}: ${existingTask.title}`,
+            message: `${req.user.name} assigned you to ${existingTask.list.project.key}-${existingTask.taskNumber}: ${existingTask.title}`,
             entityType: 'TASK',
             entityId: id,
           },
@@ -369,7 +492,7 @@ export const updateTask = async (req: Request, res: Response) => {
       }
     }
 
-    // Activity logging for priority change
+    // Activity logging
     if (priority && priority !== existingTask.priority) {
       await prisma.activityLog.create({
         data: {
@@ -381,12 +504,45 @@ export const updateTask = async (req: Request, res: Response) => {
       });
     }
 
+    if (timeEstimate && timeEstimate !== existingTask.timeEstimate) {
+      await prisma.activityLog.create({
+        data: {
+          taskId: id,
+          userId: req.user.id,
+          action: 'TIME_ESTIMATE_CHANGE',
+          details: JSON.stringify({ from: existingTask.timeEstimate, to: timeEstimate }),
+        },
+      });
+    }
+
+    if (columnId && columnId !== existingTask.columnId) {
+      const newCol = await prisma.boardColumn.findUnique({ where: { id: columnId } });
+      await prisma.activityLog.create({
+        data: {
+          taskId: id,
+          userId: req.user.id,
+          action: 'STATUS_CHANGE',
+          details: JSON.stringify({
+            from: existingTask.column.name,
+            to: newCol?.name || 'New Status',
+          }),
+        },
+      });
+    }
+
     const updatedTask = await prisma.task.update({
       where: { id },
       data,
       include: {
-        project: {
-          select: { id: true, name: true, key: true, color: true },
+        list: {
+          select: {
+            id: true,
+            name: true,
+            projectId: true,
+            project: {
+              select: { id: true, name: true, key: true, color: true },
+            },
+          },
         },
         column: {
           select: { id: true, name: true, color: true, isCompleted: true },
@@ -401,13 +557,18 @@ export const updateTask = async (req: Request, res: Response) => {
         subtasks: {
           orderBy: { order: 'asc' },
         },
+        attachments: {
+          orderBy: { createdAt: 'desc' },
+        },
         _count: {
           select: { comments: true, attachments: true },
         },
       },
     });
 
-    emitToProject(updatedTask.projectId, 'task:updated', updatedTask);
+    emitToProject(updatedTask.list.projectId, 'task:updated', updatedTask);
+    emitToTask(id, 'task:updated', updatedTask);
+
     return res.status(200).json({ task: updatedTask });
   } catch (error) {
     console.error('updateTask error:', error);
@@ -430,6 +591,7 @@ export const moveTask = async (req: Request, res: Response) => {
       where: { id },
       include: {
         column: true,
+        list: true,
       },
     });
 
@@ -445,7 +607,6 @@ export const moveTask = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Target column not found' });
     }
 
-    // Check if column status changed
     const statusChanged = currentTask.columnId !== columnId;
 
     const updated = await prisma.task.update({
@@ -456,7 +617,7 @@ export const moveTask = async (req: Request, res: Response) => {
       },
       include: {
         column: true,
-        project: { select: { id: true, key: true } },
+        list: { select: { id: true, projectId: true } },
       },
     });
 
@@ -486,23 +647,21 @@ export const moveTask = async (req: Request, res: Response) => {
           nextDueDate = new Date(baseDate.setMonth(baseDate.getMonth() + 1));
         }
 
-        // Get first column in project
         const firstCol = await prisma.boardColumn.findFirst({
-          where: { projectId: currentTask.projectId },
+          where: { listId: currentTask.listId },
           orderBy: { order: 'asc' },
         });
 
         if (firstCol && nextDueDate) {
-          const lastTask = await prisma.task.findFirst({
-            where: { projectId: currentTask.projectId },
-            orderBy: { taskNumber: 'desc' },
+          const count = await prisma.task.count({
+            where: { listId: currentTask.listId },
           });
 
           await prisma.task.create({
             data: {
-              projectId: currentTask.projectId,
+              listId: currentTask.listId,
               columnId: firstCol.id,
-              taskNumber: (lastTask?.taskNumber || 100) + 1,
+              taskNumber: 100 + count + 1,
               title: currentTask.title,
               description: currentTask.description,
               priority: currentTask.priority,
@@ -517,7 +676,13 @@ export const moveTask = async (req: Request, res: Response) => {
       }
     }
 
-    emitToProject(currentTask.projectId, 'task:moved', {
+    emitToProject(currentTask.list.projectId, 'task:moved', {
+      taskId: id,
+      sourceColumnId: currentTask.columnId,
+      destColumnId: columnId,
+      newOrder: order,
+    });
+    emitToTask(id, 'task:moved', {
       taskId: id,
       sourceColumnId: currentTask.columnId,
       destColumnId: columnId,
@@ -536,13 +701,17 @@ export const deleteTask = async (req: Request, res: Response) => {
     const { id } = req.params;
     const task = await prisma.task.findUnique({
       where: { id },
-      select: { id: true, projectId: true },
+      include: {
+        list: { select: { projectId: true } },
+      },
     });
 
     if (!task) return res.status(404).json({ error: 'Task not found' });
 
     await prisma.task.delete({ where: { id } });
-    emitToProject(task.projectId, 'task:deleted', { taskId: id });
+
+    emitToProject(task.list.projectId, 'task:deleted', { taskId: id });
+    emitToTask(id, 'task:deleted', { taskId: id });
 
     return res.status(200).json({ message: 'Task deleted successfully' });
   } catch (error) {
@@ -616,10 +785,12 @@ export const addSubtask = async (req: Request, res: Response) => {
 
     const task = await prisma.task.findUnique({
       where: { id: taskId },
-      select: { projectId: true },
+      include: { list: { select: { projectId: true } } },
     });
+
     if (task) {
-      emitToProject(task.projectId, 'subtask:created', { taskId, subtask });
+      emitToProject(task.list.projectId, 'subtask:created', { taskId, subtask });
+      emitToTask(taskId, 'subtask:created', { taskId, subtask });
     }
 
     return res.status(201).json({ subtask });
@@ -641,10 +812,15 @@ export const toggleSubtask = async (req: Request, res: Response) => {
 
     const task = await prisma.task.findUnique({
       where: { id: current.taskId },
-      select: { projectId: true },
+      include: { list: { select: { projectId: true } } },
     });
+
     if (task) {
-      emitToProject(task.projectId, 'subtask:updated', {
+      emitToProject(task.list.projectId, 'subtask:updated', {
+        taskId: current.taskId,
+        subtask: updated,
+      });
+      emitToTask(current.taskId, 'subtask:updated', {
         taskId: current.taskId,
         subtask: updated,
       });
@@ -666,10 +842,15 @@ export const deleteSubtask = async (req: Request, res: Response) => {
 
     const task = await prisma.task.findUnique({
       where: { id: current.taskId },
-      select: { projectId: true },
+      include: { list: { select: { projectId: true } } },
     });
+
     if (task) {
-      emitToProject(task.projectId, 'subtask:deleted', {
+      emitToProject(task.list.projectId, 'subtask:deleted', {
+        taskId: current.taskId,
+        subtaskId,
+      });
+      emitToTask(current.taskId, 'subtask:deleted', {
         taskId: current.taskId,
         subtaskId,
       });

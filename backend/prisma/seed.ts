@@ -6,9 +6,9 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting database seed...');
+  console.log('🌱 Starting ClickUp-style database seed...');
 
-  // Clean existing data
+  // Clean existing tables
   await prisma.notification.deleteMany();
   await prisma.activityLog.deleteMany();
   await prisma.attachment.deleteMany();
@@ -18,7 +18,9 @@ async function main() {
   await prisma.taskAssignee.deleteMany();
   await prisma.task.deleteMany();
   await prisma.boardColumn.deleteMany();
+  await prisma.taskList.deleteMany();
   await prisma.project.deleteMany();
+  await prisma.space.deleteMany();
   await prisma.workspaceInvitation.deleteMany();
   await prisma.workspaceMember.deleteMany();
   await prisma.workspace.deleteMany();
@@ -77,14 +79,14 @@ async function main() {
     },
   });
 
-  console.log('✓ Created 5 demo users');
+  console.log('✓ Created 5 demo team members');
 
   // 2. Create Workspace
   const workspace = await prisma.workspace.create({
     data: {
       name: 'Acme Technologies',
       slug: 'acme-tech',
-      description: 'Primary engineering and product organization workspace',
+      description: 'Primary product & engineering workspace',
       logoUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150',
       ownerId: sarah.id,
       members: {
@@ -99,54 +101,96 @@ async function main() {
     },
   });
 
-  console.log(`✓ Created workspace: ${workspace.name}`);
-
-  // 3. Create Projects
-  const project1 = await prisma.project.create({
+  // 3. Create ClickUp Spaces
+  const engineeringSpace = await prisma.space.create({
     data: {
       workspaceId: workspace.id,
-      name: 'Mobile App Redesign',
+      name: 'Engineering',
+      color: '#7B68EE', // ClickUp purple
+      icon: 'code',
+      order: 0,
+    },
+  });
+
+  const productSpace = await prisma.space.create({
+    data: {
+      workspaceId: workspace.id,
+      name: 'Product & Design',
+      color: '#06B6D4',
+      icon: 'sparkles',
+      order: 1,
+    },
+  });
+
+  console.log('✓ Created ClickUp Spaces (Engineering, Product & Design)');
+
+  // 4. Create Project within Engineering Space
+  const mobileProject = await prisma.project.create({
+    data: {
+      spaceId: engineeringSpace.id,
+      name: 'Mobile App 3.0',
       key: 'APP',
-      description: 'Rebuilding the iOS and Android mobile app with React Native and modern sleek UX',
-      color: '#6366f1', // Indigo
+      description: 'Next-gen iOS & Android apps with clean light UX',
+      color: '#7B68EE',
       icon: 'smartphone',
-      columns: {
-        create: [
-          { name: 'Backlog', color: '#94a3b8', order: 0, isCompleted: false },
-          { name: 'To Do', color: '#3b82f6', order: 1, isCompleted: false },
-          { name: 'In Progress', color: '#8b5cf6', order: 2, isCompleted: false },
-          { name: 'In Review', color: '#ec4899', order: 3, isCompleted: false },
-          { name: 'Done', color: '#10b981', order: 4, isCompleted: true },
-        ],
-      },
+      order: 0,
     },
-    include: { columns: true },
   });
 
-  const project2 = await prisma.project.create({
+  const backendProject = await prisma.project.create({
     data: {
-      workspaceId: workspace.id,
-      name: 'Cloud Infrastructure 2.0',
-      key: 'OPS',
-      description: 'Migrating microservices to Kubernetes and optimizing Supabase database read replicas',
-      color: '#06b6d4', // Cyan
-      icon: 'cloud',
+      spaceId: engineeringSpace.id,
+      name: 'API Infrastructure',
+      key: 'API',
+      description: 'High-concurrency microservices and Socket gateway',
+      color: '#10B981',
+      icon: 'server',
+      order: 1,
+    },
+  });
+
+  console.log('✓ Created Projects (Mobile App 3.0, API Infrastructure)');
+
+  // 5. Create Lists within Project
+  const sprintList = await prisma.taskList.create({
+    data: {
+      projectId: mobileProject.id,
+      name: 'Sprint 24 - Launch',
+      description: 'Core tasks for the mobile app launch release',
+      order: 0,
       columns: {
         create: [
-          { name: 'To Do', color: '#3b82f6', order: 0, isCompleted: false },
-          { name: 'In Progress', color: '#8b5cf6', order: 1, isCompleted: false },
-          { name: 'Testing', color: '#f59e0b', order: 2, isCompleted: false },
-          { name: 'Done', color: '#10b981', order: 3, isCompleted: true },
+          { name: 'To Do', color: '#94A3B8', order: 0, isCompleted: false },
+          { name: 'In Progress', color: '#7B68EE', order: 1, isCompleted: false },
+          { name: 'In Review', color: '#F59E0B', order: 2, isCompleted: false },
+          { name: 'Done', color: '#10B981', order: 3, isCompleted: true },
         ],
       },
     },
     include: { columns: true },
   });
 
-  console.log('✓ Created 2 projects with custom columns');
+  const backlogList = await prisma.taskList.create({
+    data: {
+      projectId: mobileProject.id,
+      name: 'Product Backlog',
+      description: 'Future roadmap enhancements',
+      order: 1,
+      columns: {
+        create: [
+          { name: 'To Do', color: '#94A3B8', order: 0, isCompleted: false },
+          { name: 'In Progress', color: '#7B68EE', order: 1, isCompleted: false },
+          { name: 'Done', color: '#10B981', order: 2, isCompleted: true },
+        ],
+      },
+    },
+    include: { columns: true },
+  });
 
-  // Columns for project 1
-  const cols = project1.columns.reduce((acc, col) => {
+  console.log('✓ Created Task Lists with Custom Statuses');
+
+  // Columns dictionary
+  const cols = sprintList.columns.reduce((acc, col) => {
     acc[col.name] = col.id;
     return acc;
   }, {} as Record<string, string>);
@@ -154,40 +198,66 @@ async function main() {
   const now = new Date();
   const day = 24 * 60 * 60 * 1000;
 
-  // 4. Create Tasks in Project 1
+  // 6. Create Tasks with In-Task Chat & Images
   const task1 = await prisma.task.create({
     data: {
-      projectId: project1.id,
+      listId: sprintList.id,
       columnId: cols['In Progress'],
       taskNumber: 101,
-      title: 'Design Dark Mode System & Color Tokens',
-      description: 'Establish cohesive dark/light design tokens in Figma and export CSS variable mappings for the Tailwind theme.',
+      title: 'Design Clean Light UI Theme & Design Tokens',
+      description:
+        'Create a light, minimal UI inspired by ClickUp with generous whitespace, subtle borders, and signature purple accents.\n\n### Requirements:\n- Soft off-white backgrounds (#FAFAFA / #FFFFFF)\n- ClickUp purple accent (#7B68EE)\n- Clean sans-serif typography with high contrast',
       priority: 'HIGH',
       order: 1000,
       startDate: new Date(now.getTime() - 2 * day),
-      dueDate: new Date(now.getTime() + 3 * day),
-      labels: JSON.stringify(['Design', 'UI/UX', 'v2.0']),
-      creatorId: alex.id,
+      dueDate: new Date(now.getTime() + 2 * day),
+      timeEstimate: '6h',
+      coverImage: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600',
+      labels: JSON.stringify(['Design', 'UI/UX', 'ClickUp-Style']),
+      creatorId: priya.id,
       assignees: {
         create: [{ userId: priya.id }, { userId: david.id }],
       },
       subtasks: {
         create: [
-          { title: 'Audit current color contrast ratios', isCompleted: true, order: 0 },
-          { title: 'Define HSL semantic tokens for dark theme', isCompleted: true, order: 1 },
-          { title: 'Implement Tailwind config custom extensions', isCompleted: false, order: 2 },
-          { title: 'Verify accessible text contrast in mobile view', isCompleted: false, order: 3 },
+          { title: 'Establish color palette and border tokens', isCompleted: true, order: 0 },
+          { title: 'Design ClickUp task modal split-view layout', isCompleted: true, order: 1 },
+          { title: 'Implement image preview gallery inside task view', isCompleted: true, order: 2 },
+          { title: 'Polish in-task real-time chat bubble styling', isCompleted: false, order: 3 },
+        ],
+      },
+      attachments: {
+        create: [
+          {
+            uploadedById: priya.id,
+            fileName: 'dashboard_mockup.png',
+            fileUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600',
+            fileType: 'image/png',
+            fileSize: 245000,
+            isImage: true,
+          },
+          {
+            uploadedById: priya.id,
+            fileName: 'design_specs_v3.pdf',
+            fileUrl: 'https://example.com/specs.pdf',
+            fileType: 'application/pdf',
+            fileSize: 1024000,
+            isImage: false,
+          },
         ],
       },
       comments: {
         create: [
           {
             userId: priya.id,
-            content: 'Working on the Figma tokens right now! The contrast on muted text looks much cleaner now.',
+            content: 'Hey @Alex, I uploaded the initial design preview image above. The light theme feels so clean!',
+            imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600',
+            createdAt: new Date(now.getTime() - 1 * day),
           },
           {
             userId: alex.id,
-            content: 'Awesome! Please make sure to check OLED dark black (#090D16) for battery saving on mobile.',
+            content: 'Looks fantastic Priya! Love the whitespace and the in-task chat feels like a true mini Slack channel.',
+            createdAt: new Date(now.getTime() - 18 * 60 * 60 * 1000),
           },
         ],
       },
@@ -196,32 +266,35 @@ async function main() {
 
   const task2 = await prisma.task.create({
     data: {
-      projectId: project1.id,
+      listId: sprintList.id,
       columnId: cols['In Progress'],
       taskNumber: 102,
-      title: 'Implement Real-time WebSocket Gateway',
-      description: 'Integrate Socket.io with Express and broadcast task updates, drag-and-drop reordering, and team member presence.',
+      title: 'In-Task Real-time Chat Gateway & Image Upload',
+      description:
+        'Implement Socket.io room broadcasting for every single task so team members can chat, share screenshots, and receive instant @mention notifications while authoring or editing tasks.',
       priority: 'URGENT',
       order: 2000,
       startDate: new Date(now.getTime() - 1 * day),
       dueDate: new Date(now.getTime() + 1 * day),
-      labels: JSON.stringify(['Backend', 'Realtime', 'Sockets']),
-      creatorId: sarah.id,
+      timeEstimate: '8h',
+      labels: JSON.stringify(['Sockets', 'Chat', 'Realtime']),
+      creatorId: david.id,
       assignees: {
         create: [{ userId: david.id }],
       },
       subtasks: {
         create: [
-          { title: 'Setup Socket.io connection handshake with JWT auth', isCompleted: true, order: 0 },
-          { title: 'Create project room subscription handlers', isCompleted: true, order: 1 },
-          { title: 'Broadcast task:moved and task:updated events', isCompleted: false, order: 2 },
+          { title: 'Create in-task chat room handlers on Socket.io', isCompleted: true, order: 0 },
+          { title: 'Support in-chat image attachment sharing', isCompleted: true, order: 1 },
+          { title: 'Trigger instant notifications for @mentions', isCompleted: true, order: 2 },
         ],
       },
       comments: {
         create: [
           {
             userId: david.id,
-            content: 'Handshake auth via JWT is working. Ready to wire up board optimistic listeners.',
+            content: 'Socket room `task:${taskId}` is active. Live chat messages and attachments now broadcast in real time!',
+            createdAt: new Date(now.getTime() - 4 * 60 * 60 * 1000),
           },
         ],
       },
@@ -230,186 +303,112 @@ async function main() {
 
   const task3 = await prisma.task.create({
     data: {
-      projectId: project1.id,
+      listId: sprintList.id,
       columnId: cols['To Do'],
       taskNumber: 103,
-      title: 'Biometric FaceID / TouchID Authentication',
-      description: 'Support seamless biometric fast-login on mobile devices with fallback to JWT refresh tokens.',
-      priority: 'MEDIUM',
+      title: 'ClickUp Multi-View Switcher: Board, List, Calendar, Gantt',
+      description:
+        'Ensure seamless switching between Kanban drag-and-drop, ClickUp table/list view, month calendar, and horizontal timeline gantt schedule.',
+      priority: 'HIGH',
       order: 1000,
       startDate: new Date(now.getTime() + 1 * day),
-      dueDate: new Date(now.getTime() + 5 * day),
-      labels: JSON.stringify(['Mobile', 'Security', 'Auth']),
-      creatorId: alex.id,
+      dueDate: new Date(now.getTime() + 4 * day),
+      timeEstimate: '4h',
+      labels: JSON.stringify(['Views', 'Kanban', 'Gantt']),
+      creatorId: sarah.id,
       assignees: {
         create: [{ userId: marcus.id }],
-      },
-      subtasks: {
-        create: [
-          { title: 'Investigate Expo LocalAuthentication API', isCompleted: false, order: 0 },
-          { title: 'Create fallback PIN screen', isCompleted: false, order: 1 },
-        ],
       },
     },
   });
 
   const task4 = await prisma.task.create({
     data: {
-      projectId: project1.id,
-      columnId: cols['To Do'],
-      taskNumber: 104,
-      title: 'Offline Sync & Cache Layer with SQLite / WatermelonDB',
-      description: 'Allow users to browse and edit boards offline, then reconcile state automatically upon reconnect.',
-      priority: 'LOW',
-      order: 2000,
-      dueDate: new Date(now.getTime() + 10 * day),
-      labels: JSON.stringify(['Mobile', 'Offline', 'Architecture']),
-      creatorId: sarah.id,
-      assignees: {
-        create: [{ userId: david.id }],
-      },
-    },
-  });
-
-  const task5 = await prisma.task.create({
-    data: {
-      projectId: project1.id,
-      columnId: cols['In Review'],
-      taskNumber: 105,
-      title: 'Kanban Drag-and-Drop Column Reordering',
-      description: 'Enable fluid column reordering and task card positioning with optimistic visual updates and spring animations.',
-      priority: 'HIGH',
-      order: 1000,
-      startDate: new Date(now.getTime() - 4 * day),
-      dueDate: new Date(now.getTime() + 2 * day),
-      labels: JSON.stringify(['Frontend', 'Kanban', 'UX']),
-      creatorId: alex.id,
-      assignees: {
-        create: [{ userId: priya.id }],
-      },
-      subtasks: {
-        create: [
-          { title: 'Install drag-and-drop toolkit', isCompleted: true, order: 0 },
-          { title: 'Implement smooth drag handle and drop placeholder', isCompleted: true, order: 1 },
-          { title: 'Calculate fractional orders on drop', isCompleted: true, order: 2 },
-          { title: 'Keyboard accessible drag and drop', isCompleted: false, order: 3 },
-        ],
-      },
-    },
-  });
-
-  const task6 = await prisma.task.create({
-    data: {
-      projectId: project1.id,
+      listId: sprintList.id,
       columnId: cols['Done'],
-      taskNumber: 106,
-      title: 'Database Schema & Relational Modeling',
-      description: 'Configure Prisma models with PostgreSQL and SQLite schemas, foreign key cascades, and indexes.',
+      taskNumber: 104,
+      title: 'Workspace > Space > Project > List Hierarchy Schema',
+      description: 'Modeled database relational tables matching ClickUp 5-tier organization hierarchy with Prisma.',
       priority: 'HIGH',
       order: 1000,
-      startDate: new Date(now.getTime() - 5 * day),
       dueDate: new Date(now.getTime() - 1 * day),
-      labels: JSON.stringify(['Database', 'Prisma', 'PostgreSQL']),
+      timeEstimate: '5h',
+      labels: JSON.stringify(['Prisma', 'Database', 'Schema']),
       creatorId: sarah.id,
       assignees: {
-        create: [{ userId: sarah.id }, { userId: alex.id }],
+        create: [{ userId: sarah.id }, { userId: david.id }],
       },
       subtasks: {
         create: [
-          { title: 'Draft entity relationship diagrams', isCompleted: true, order: 0 },
-          { title: 'Setup Prisma schema with relations', isCompleted: true, order: 1 },
-          { title: 'Write automated seed script', isCompleted: true, order: 2 },
+          { title: 'Draft Prisma relational hierarchy', isCompleted: true, order: 0 },
+          { title: 'Add in-task chat image support to Comment model', isCompleted: true, order: 1 },
+          { title: 'Separate ActivityLog audit trail from user chat', isCompleted: true, order: 2 },
         ],
       },
     },
   });
 
-  const task7 = await prisma.task.create({
-    data: {
-      projectId: project1.id,
-      columnId: cols['Backlog'],
-      taskNumber: 107,
-      title: 'Burndown Chart & Velocity Analytics',
-      description: 'Compute sprint velocity, task completion rate over time, and render interactive burndown SVG/canvas charts.',
-      priority: 'MEDIUM',
-      order: 1000,
-      dueDate: new Date(now.getTime() + 14 * day),
-      labels: JSON.stringify(['Analytics', 'Reporting']),
-      creatorId: alex.id,
-    },
-  });
-
-  // 5. Create Task Dependency (task2 blocks task5)
+  // Task Dependency
   await prisma.taskDependency.create({
     data: {
-      taskId: task5.id,
-      dependsOnTaskId: task2.id,
+      taskId: task3.id,
+      dependsOnTaskId: task1.id,
     },
   });
 
-  // 6. Create Activity Logs
+  // Activity Logs (Audit trail separate from chat comments)
   await prisma.activityLog.createMany({
     data: [
       {
         taskId: task1.id,
-        userId: alex.id,
-        action: 'CREATED',
+        userId: priya.id,
+        action: 'TASK_CREATED',
         details: JSON.stringify({ message: 'Task created' }),
         createdAt: new Date(now.getTime() - 2 * day),
       },
       {
         taskId: task1.id,
         userId: priya.id,
-        action: 'STATUS_CHANGE',
+        action: 'STATUS_CHANGED',
         details: JSON.stringify({ from: 'To Do', to: 'In Progress' }),
         createdAt: new Date(now.getTime() - 1 * day),
       },
       {
         taskId: task2.id,
-        userId: sarah.id,
-        action: 'PRIORITY_CHANGE',
+        userId: david.id,
+        action: 'PRIORITY_CHANGED',
         details: JSON.stringify({ from: 'HIGH', to: 'URGENT' }),
-        createdAt: new Date(now.getTime() - 12 * 60 * 60 * 1000),
+        createdAt: new Date(now.getTime() - 10 * 60 * 60 * 1000),
       },
       {
-        taskId: task6.id,
+        taskId: task4.id,
         userId: sarah.id,
-        action: 'STATUS_CHANGE',
+        action: 'STATUS_CHANGED',
         details: JSON.stringify({ from: 'In Review', to: 'Done' }),
         createdAt: new Date(now.getTime() - 1 * day),
       },
     ],
   });
 
-  // 7. Create Demo Notifications
+  // Notifications
   await prisma.notification.createMany({
     data: [
       {
-        userId: sarah.id,
+        userId: alex.id,
         actorId: priya.id,
-        type: 'COMMENT',
-        title: 'New comment on APP-101',
-        message: 'Priya Patel commented: "Working on the Figma tokens right now!"',
+        type: 'CHAT',
+        title: 'New chat in APP-101',
+        message: 'Priya Patel: "Hey @Alex, I uploaded the initial design preview image..."',
         entityType: 'TASK',
         entityId: task1.id,
         isRead: false,
       },
       {
         userId: sarah.id,
-        actorId: alex.id,
-        type: 'ASSIGNMENT',
-        title: 'Assigned to Database Schema',
-        message: 'Alex Rivera assigned you to APP-106 Database Schema & Relational Modeling',
-        entityType: 'TASK',
-        entityId: task6.id,
-        isRead: true,
-      },
-      {
-        userId: sarah.id,
         actorId: david.id,
-        type: 'MENTION',
-        title: 'Mentioned in APP-102',
-        message: 'David Chen mentioned you in APP-102 Real-time WebSocket Gateway',
+        type: 'ASSIGNMENT',
+        title: 'Assigned to In-Task Chat Gateway',
+        message: 'David Chen added you to APP-102',
         entityType: 'TASK',
         entityId: task2.id,
         isRead: false,
@@ -417,8 +416,8 @@ async function main() {
     ],
   });
 
-  console.log('✓ Created rich seed tasks, subtasks, dependencies, activity logs, and notifications');
-  console.log('🎉 Seeding successfully completed!');
+  console.log('✓ Created sample tasks, in-task chat threads with images, checklists, and separate activity logs');
+  console.log('🎉 ClickUp-style database successfully seeded!');
 }
 
 main()

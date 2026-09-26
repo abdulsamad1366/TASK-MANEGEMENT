@@ -9,10 +9,6 @@ import {
   Clock,
   Search,
   Plus,
-  Filter,
-  Users,
-  CheckCircle2,
-  Trash2,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -57,20 +53,20 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   ];
 
   return (
-    <div className="space-y-3.5 mb-5">
+    <div className="space-y-3 mb-4">
       {/* Top Row: View Switcher Tabs + Search + Create Button */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        {/* View Switcher Tabs */}
-        <div className="flex items-center p-1 rounded-xl bg-slate-200/60 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 shadow-inner">
+        {/* ClickUp View Switcher Tabs */}
+        <div className="flex items-center p-0.5 rounded-lg bg-slate-100 border border-slate-200/80">
           {views.map((v) => (
             <button
               key={v.id}
               onClick={() => onViewChange(v.id)}
               className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition',
+                'flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition',
                 currentView === v.id
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
               )}
             >
               {v.icon}
@@ -80,23 +76,23 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         </div>
 
         {/* Search & Actions */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={filters.search}
               onChange={(e) => onFilterChange({ ...filters, search: e.target.value })}
-              placeholder="Filter tasks..."
-              className="text-xs pl-8 pr-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none w-48 transition"
+              placeholder="Search tasks..."
+              className="text-xs pl-7 pr-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:ring-1 focus:ring-[#7B68EE] outline-none w-44 transition"
             />
           </div>
 
           <button
             onClick={onNewTask}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-sm transition"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#7B68EE] hover:bg-[#6C5CE7] text-white rounded-lg text-xs font-bold shadow-xs transition"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
             <span>New Task</span>
           </button>
         </div>
@@ -111,10 +107,10 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               key={qf.id}
               onClick={() => onFilterChange({ ...filters, quickView: qf.id })}
               className={cn(
-                'px-3 py-1 rounded-full text-xs font-medium transition border',
+                'px-2.5 py-0.5 rounded-full text-xs font-medium transition border',
                 filters.quickView === qf.id
-                  ? 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-500/40 text-indigo-600 dark:text-indigo-400 font-semibold'
-                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50'
+                  ? 'bg-purple-50 border-purple-200 text-[#7B68EE] font-bold'
+                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
               )}
             >
               {qf.label}
@@ -128,7 +124,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           <select
             value={filters.assigneeId}
             onChange={(e) => onFilterChange({ ...filters, assigneeId: e.target.value })}
-            className="text-xs px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 outline-none cursor-pointer"
+            className="text-xs px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 outline-none cursor-pointer"
           >
             <option value="">All Assignees</option>
             {workspaceMembers.map((m) => (
@@ -142,12 +138,12 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           <select
             value={filters.priority}
             onChange={(e) => onFilterChange({ ...filters, priority: e.target.value })}
-            className="text-xs px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 outline-none cursor-pointer"
+            className="text-xs px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 outline-none cursor-pointer"
           >
             <option value="">All Priorities</option>
             <option value="URGENT">Urgent</option>
             <option value="HIGH">High</option>
-            <option value="MEDIUM">Medium</option>
+            <option value="MEDIUM">Normal</option>
             <option value="LOW">Low</option>
           </select>
 
@@ -163,7 +159,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                   quickView: 'all',
                 })
               }
-              className="text-xs text-rose-500 hover:underline px-1 font-medium"
+              className="text-xs text-red-500 hover:underline px-1 font-semibold"
             >
               Reset
             </button>
@@ -173,9 +169,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
       {/* Bulk Action Toolbar if tasks are selected */}
       {selectedTaskCount > 0 && onBulkUpdate && (
-        <div className="flex items-center justify-between p-2.5 px-4 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-200 dark:border-indigo-800 text-xs animate-fadeIn">
+        <div className="flex items-center justify-between p-2 px-3 rounded-lg bg-purple-50 border border-purple-200 text-xs animate-fadeIn">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-indigo-700 dark:text-indigo-300">
+            <span className="font-bold text-[#7B68EE]">
               {selectedTaskCount} tasks selected
             </span>
           </div>
@@ -183,10 +179,10 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           <div className="flex items-center gap-3">
             {/* Bulk status move */}
             <div className="flex items-center gap-1.5">
-              <span className="text-slate-500 dark:text-slate-400">Move to:</span>
+              <span className="text-slate-500">Move to:</span>
               <select
                 onChange={(e) => onBulkUpdate({ columnId: e.target.value })}
-                className="text-xs px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 cursor-pointer"
+                className="text-xs px-2 py-0.5 rounded bg-white border border-slate-200 cursor-pointer"
               >
                 <option value="">Choose Column...</option>
                 {columns.map((c) => (
@@ -199,15 +195,15 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
             {/* Bulk priority change */}
             <div className="flex items-center gap-1.5">
-              <span className="text-slate-500 dark:text-slate-400">Priority:</span>
+              <span className="text-slate-500">Priority:</span>
               <select
                 onChange={(e) => onBulkUpdate({ priority: e.target.value as Priority })}
-                className="text-xs px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 cursor-pointer"
+                className="text-xs px-2 py-0.5 rounded bg-white border border-slate-200 cursor-pointer"
               >
                 <option value="">Choose Priority...</option>
                 <option value="URGENT">Urgent</option>
                 <option value="HIGH">High</option>
-                <option value="MEDIUM">Medium</option>
+                <option value="MEDIUM">Normal</option>
                 <option value="LOW">Low</option>
               </select>
             </div>
@@ -215,7 +211,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             {onClearSelection && (
               <button
                 onClick={onClearSelection}
-                className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 underline"
+                className="text-xs text-slate-500 hover:text-slate-800 underline"
               >
                 Deselect
               </button>

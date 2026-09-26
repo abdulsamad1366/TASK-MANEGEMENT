@@ -14,6 +14,7 @@ interface AuthContextType {
   logout: () => void;
   setActiveWorkspace: (workspace: Workspace) => void;
   refreshUser: () => Promise<void>;
+  updateUser: (user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -136,6 +137,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         logout,
         setActiveWorkspace,
         refreshUser: fetchProfile,
+        updateUser: (u: User) => setUser(u),
       }}
     >
       {children}

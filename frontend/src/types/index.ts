@@ -44,6 +44,7 @@ export interface Workspace {
   logoUrl?: string | null;
   ownerId: string;
   members?: WorkspaceMember[];
+  spaces?: Space[];
   projects?: Project[];
   currentUserRole?: Role;
   _count?: {
@@ -52,9 +53,60 @@ export interface Workspace {
   };
 }
 
-export interface BoardColumn {
+export interface Space {
+  id: string;
+  workspaceId: string;
+  name: string;
+  color: string;
+  icon?: string | null;
+  order: number;
+  projects?: Project[];
+  workspace?: Workspace;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Project {
+  id: string;
+  spaceId?: string;
+  workspaceId?: string;
+  name: string;
+  key: string;
+  description?: string | null;
+  color: string;
+  icon?: string | null;
+  order?: number;
+  lists?: TaskList[];
+  columns?: BoardColumn[];
+  tasks?: Task[];
+  space?: Space;
+  workspace?: Workspace;
+  _count?: {
+    tasks: number;
+    columns: number;
+  };
+}
+
+export interface TaskList {
   id: string;
   projectId: string;
+  name: string;
+  description?: string | null;
+  order: number;
+  columns?: BoardColumn[];
+  tasks?: Task[];
+  project?: Project;
+  _count?: {
+    tasks: number;
+  };
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface BoardColumn {
+  id: string;
+  listId?: string;
+  projectId?: string;
   name: string;
   color: string;
   order: number;
@@ -89,11 +141,12 @@ export interface Comment {
   taskId: string;
   userId: string;
   content: string;
+  imageUrl?: string | null;
   createdAt: string;
   user: {
     id: string;
     name: string;
-    email: string;
+    email?: string;
     avatarUrl?: string | null;
   };
 }
@@ -106,6 +159,7 @@ export interface Attachment {
   fileUrl: string;
   fileType: string;
   fileSize: number;
+  isImage?: boolean;
   createdAt: string;
   uploadedBy?: {
     id: string;
@@ -149,7 +203,8 @@ export interface TaskDependency {
 
 export interface Task {
   id: string;
-  projectId: string;
+  listId?: string;
+  projectId?: string;
   columnId: string;
   taskNumber: number;
   title: string;
@@ -158,6 +213,8 @@ export interface Task {
   order: number;
   startDate?: string | null;
   dueDate?: string | null;
+  timeEstimate?: string | null;
+  coverImage?: string | null;
   labels: string; // JSON string e.g. "[\"Design\"]"
   isRecurring: boolean;
   recurrenceRule: RecurrenceRule;
@@ -165,6 +222,7 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
 
+  list?: TaskList;
   project?: {
     id: string;
     name: string;
@@ -194,23 +252,6 @@ export interface Task {
   _count?: {
     comments: number;
     attachments: number;
-  };
-}
-
-export interface Project {
-  id: string;
-  workspaceId: string;
-  name: string;
-  key: string;
-  description?: string | null;
-  color: string;
-  icon?: string | null;
-  columns?: BoardColumn[];
-  tasks?: Task[];
-  workspace?: Workspace;
-  _count?: {
-    tasks: number;
-    columns: number;
   };
 }
 

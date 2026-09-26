@@ -98,26 +98,43 @@ class ApiClient {
   removeMember = (workspaceId: string, memberId: string) =>
     this.request<any>(`/workspaces/${workspaceId}/members/${memberId}`, { method: 'DELETE' });
 
-  // Project endpoints
+  // ClickUp Hierarchy: Workspace > Spaces > Projects > Lists
+  getHierarchy = (workspaceId: string) =>
+    this.request<{ spaces: any[] }>(`/workspaces/${workspaceId}/hierarchy`);
+  createSpace = (workspaceId: string, data: { name: string; color?: string; icon?: string }) =>
+    this.request<any>(`/workspaces/${workspaceId}/spaces`, { method: 'POST', body: JSON.stringify(data) });
+  updateSpace = (spaceId: string, data: any) =>
+    this.request<any>(`/spaces/${spaceId}`, { method: 'PATCH', body: JSON.stringify(data) });
+  deleteSpace = (spaceId: string) =>
+    this.request<any>(`/spaces/${spaceId}`, { method: 'DELETE' });
+
+  createProjectInSpace = (spaceId: string, data: any) =>
+    this.request<any>(`/spaces/${spaceId}/projects`, { method: 'POST', body: JSON.stringify(data) });
+
+  createTaskList = (projectId: string, data: any) =>
+    this.request<any>(`/projects/${projectId}/lists`, { method: 'POST', body: JSON.stringify(data) });
+  getTaskList = (listId: string) =>
+    this.request<{ list: any }>(`/lists/${listId}`);
+  updateTaskList = (listId: string, data: any) =>
+    this.request<any>(`/lists/${listId}`, { method: 'PATCH', body: JSON.stringify(data) });
+  deleteTaskList = (listId: string) =>
+    this.request<any>(`/lists/${listId}`, { method: 'DELETE' });
+
+  // List Column Management
+  createListColumn = (listId: string, data: any) =>
+    this.request<any>(`/lists/${listId}/columns`, { method: 'POST', body: JSON.stringify(data) });
+  updateListColumn = (columnId: string, data: any) =>
+    this.request<any>(`/columns/${columnId}`, { method: 'PATCH', body: JSON.stringify(data) });
+  deleteListColumn = (columnId: string) =>
+    this.request<any>(`/columns/${columnId}`, { method: 'DELETE' });
+
+  // Project endpoints (legacy/compat)
   getProjects = (workspaceId: string) => this.request<any>(`/projects?workspaceId=${workspaceId}`);
   getProject = (id: string) => this.request<any>(`/projects/${id}`);
   createProject = (data: any) => this.request<any>('/projects', { method: 'POST', body: JSON.stringify(data) });
   updateProject = (id: string, data: any) =>
     this.request<any>(`/projects/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
   deleteProject = (id: string) => this.request<any>(`/projects/${id}`, { method: 'DELETE' });
-
-  // Column endpoints
-  createColumn = (projectId: string, data: any) =>
-    this.request<any>(`/projects/${projectId}/columns`, { method: 'POST', body: JSON.stringify(data) });
-  updateColumn = (columnId: string, data: any) =>
-    this.request<any>(`/projects/columns/${columnId}`, { method: 'PATCH', body: JSON.stringify(data) });
-  reorderColumns = (projectId: string, columnIds: string[]) =>
-    this.request<any>(`/projects/${projectId}/columns/reorder`, {
-      method: 'POST',
-      body: JSON.stringify({ columnIds }),
-    });
-  deleteColumn = (columnId: string) =>
-    this.request<any>(`/projects/columns/${columnId}`, { method: 'DELETE' });
 
   // Task endpoints
   getTasks = (params: Record<string, string> = {}) => {
@@ -150,13 +167,27 @@ class ApiClient {
   removeDependency = (taskId: string, dependsOnTaskId: string) =>
     this.request<any>(`/tasks/${taskId}/dependencies/${dependsOnTaskId}`, { method: 'DELETE' });
 
-  // Comments
-  addComment = (taskId: string, content: string) =>
-    this.request<any>(`/tasks/${taskId}/comments`, { method: 'POST', body: JSON.stringify({ content }) });
+  // Comments (In-task chat)
+  addComment = (taskId: string, content: string, imageUrl?: string) =>
+    this.request<any>(`/tasks/${taskId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ content, imageUrl }),
+    });
   deleteComment = (commentId: string) =>
     this.request<any>(`/tasks/comments/${commentId}`, { method: 'DELETE' });
 
-  // Attachments
+  // Attachments & Standalone Media Upload (Images & Files)
+  uploadMedia = (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.request<{
+      fileUrl: string;
+      fileName: string;
+      fileSize: number;
+      fileType: string;
+      isImage: boolean;
+    }>('/tasks/media', { method: 'POST', body: formData });
+  };
   uploadAttachment = (taskId: string, file: File) => {
     const formData = new FormData();
     formData.append('file', file);

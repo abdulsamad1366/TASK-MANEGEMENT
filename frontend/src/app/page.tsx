@@ -5,7 +5,9 @@ import { useAuth } from '../context/AuthContext';
 import api from '../lib/api';
 import { getSocket, joinProjectRoom, leaveProjectRoom } from '../lib/socket';
 import {
+  Space,
   Project,
+  TaskList,
   Task,
   BoardColumn,
   BoardView,
@@ -23,10 +25,13 @@ import { DashboardView } from '../components/DashboardView';
 import { SettingsView } from '../components/SettingsView';
 import { TaskModal } from '../components/TaskModal';
 import { TaskCreateModal } from '../components/TaskCreateModal';
+import { SpaceCreateModal } from '../components/SpaceCreateModal';
 import { ProjectCreateModal } from '../components/ProjectCreateModal';
+import { ListCreateModal } from '../components/ListCreateModal';
 import { InviteMemberModal } from '../components/InviteMemberModal';
 import { GlobalSearchModal } from '../components/GlobalSearchModal';
 import { AuthModal } from '../components/AuthModal';
+import { Sparkles, Plus, Layers, Folder, ListTodo } from 'lucide-react';
 
 export default function Home() {
   const { user, activeWorkspace, isLoading: isAuthLoading } = useAuth();
@@ -35,10 +40,18 @@ export default function Home() {
   const [currentTab, setCurrentTab] = useState<'dashboard' | 'project' | 'settings'>('project');
   const [currentView, setCurrentView] = useState<BoardView>('kanban');
 
-  // Core Data
-  const [projects, setProjects] = useState<Project[]>([]);
+  // ClickUp Hierarchy State: Spaces > Projects > Lists
+  const [spaces, setSpaces] = useState<Space[]>([]);
+  const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedListId, setSelectedListId] = useState<string | null>(null);
+
+  // Active Context Objects
+  const [currentSpace, setCurrentSpace] = useState<Space | null>(null);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
+  const [currentList, setCurrentList] = useState<TaskList | null>(null);
+
+  // Active Board Data
   const [columns, setColumns] = useState<BoardColumn[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMember[]>([]);
@@ -47,7 +60,11 @@ export default function Home() {
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [targetColumnId, setTargetColumnId] = useState<string | undefined>(undefined);
+  const [isCreateSpaceOpen, setIsCreateSpaceOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
+  const [projectCreateSpaceId, setProjectCreateSpaceId] = useState<string | undefined>(undefined);
+  const [isCreateListOpen, setIsCreateListOpen] = useState(false);
+  const [listCreateProjectId, setListCreateProjectId] = useState<string | undefined>(undefined);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
@@ -62,46 +79,105 @@ export default function Home() {
     quickView: 'all',
   });
 
-  // 1. Load Projects when workspace changes
+  // 1. Load ClickUp Hierarchy when workspace changes
   useEffect(() => {
     if (!activeWorkspace?.id) return;
-    loadProjects();
+    loadHierarchy();
   }, [activeWorkspace?.id]);
 
-  const loadProjects = async () => {
+  const loadHierarchy = async () => {
     if (!activeWorkspace?.id) return;
     try {
-      const res = await api.getProjects(activeWorkspace.id);
-      setProjects(res.projects || []);
+      const res = await api.getHierarchy(activeWorkspace.id);
+      const loadedSpaces: Space[] = res.spaces || [];
+      setSpaces(loadedSpaces);
 
-      if (res.projects?.length > 0) {
-        // Select first project by default if none selected
-        const pId = res.projects[0].id;
-        setSelectedProjectId(pId);
-        loadProjectDetails(pId);
+      // Auto-select first space, project, list if not currently selected
+      if (loadedSpaces.length > 0) {
+        const firstSpace = loadedSpaces[0];
+        setSelectedSpaceId((prev) => prev || firstSpace.id);
+        setCurrentSpace(firstSpace);
+
+        if (firstSpace.projects && firstSpace.projects.length > 0) {
+          const firstProj = firstSpace.projects[0];
+          setSelectedProjectId((prev) => prev || firstProj.id);
+          setCurrentProject(firstProj);
+
+          if (firstProj.lists && firstProj.lists.length > 0) {
+            const firstList = firstProj.lists[0];
+            setSelectedListId((prev) => prev || firstList.id);
+            loadListDetails(firstList.id);
+          } else {
+            // Project has no lists, load project details
+            loadProjectDetails(firstProj.id);
+          }
+        }
       }
     } catch (err) {
-      console.error('Failed to load projects:', err);
+      console.error('Failed to load ClickUp hierarchy:', err);
     }
   };
 
-  // 2. Load Project details (columns + tasks)
+  // 2. Load List details (Columns with custom statuses + Tasks)
+  const loadListDetails = async (listId: string) => {
+    try {
+      const res = await api.getTaskList(listId);
+      const listData: TaskList = res.list;
+      setCurrentList(listData);
+      setSelectedListId(listId);
+
+      if (listData.project) {
+        setCurrentProject(listData.project);
+        setSelectedProjectId(listData.project.id);
+        if (listData.project.space) {
+          setCurrentSpace(listData.project.space);
+          setSelectedSpaceId(listData.project.space.id);
+        }
+      }
+
+      setColumns(listData.columns || []);
+
+      // Flatten tasks from columns
+      const allListTasks: Task[] = [];
+      listData.columns?.forEach((col) => {
+        if (col.tasks) {
+          allListTasks.push(...col.tasks);
+        }
+      });
+      setTasks(allListTasks);
+
+      // Set workspace members
+      const members =
+        (listData.project?.space as any)?.workspace?.members ||
+        activeWorkspace?.members ||
+        [];
+      if (members.length > 0) {
+        setWorkspaceMembers(members);
+      }
+    } catch (err) {
+      console.error('Failed to load list details:', err);
+    }
+  };
+
+  // Fallback: Load Project details
   const loadProjectDetails = async (projectId: string) => {
     try {
       const res = await api.getProject(projectId);
       setCurrentProject(res.project);
-      setColumns(res.project.columns || []);
+      setSelectedProjectId(projectId);
 
-      // Flatten all tasks from columns
+      if (res.project.lists && res.project.lists.length > 0) {
+        loadListDetails(res.project.lists[0].id);
+        return;
+      }
+
+      setColumns(res.project.columns || []);
       const allProjectTasks: Task[] = [];
       res.project.columns?.forEach((col: BoardColumn) => {
-        if (col.tasks) {
-          allProjectTasks.push(...col.tasks);
-        }
+        if (col.tasks) allProjectTasks.push(...col.tasks);
       });
       setTasks(allProjectTasks);
 
-      // Load workspace members
       if (res.project.workspace?.members) {
         setWorkspaceMembers(res.project.workspace.members);
       }
@@ -151,15 +227,10 @@ export default function Home() {
         setTasks((prev) => prev.filter((t) => t.id !== taskId));
       };
 
-      const handleColumnCreated = (column: BoardColumn) => {
-        setColumns((prev) => [...prev, column]);
-      };
-
       socket.on('task:created', handleTaskCreated);
       socket.on('task:updated', handleTaskUpdated);
       socket.on('task:moved', handleTaskMoved);
       socket.on('task:deleted', handleTaskDeleted);
-      socket.on('column:created', handleColumnCreated);
 
       return () => {
         leaveProjectRoom(selectedProjectId);
@@ -167,14 +238,26 @@ export default function Home() {
         socket.off('task:updated', handleTaskUpdated);
         socket.off('task:moved', handleTaskMoved);
         socket.off('task:deleted', handleTaskDeleted);
-        socket.off('column:created', handleColumnCreated);
       };
     }
   }, [selectedProjectId]);
 
   // Handle Task Move (Kanban drag-and-drop)
   const handleTaskMove = async (taskId: string, destColumnId: string, newOrder: number) => {
-    await api.moveTask(taskId, { columnId: destColumnId, order: newOrder });
+    // Optimistic UI update
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId ? { ...t, columnId: destColumnId, order: newOrder } : t
+      )
+    );
+
+    try {
+      await api.moveTask(taskId, { columnId: destColumnId, order: newOrder });
+    } catch (err) {
+      console.error('Failed to move task on server:', err);
+      // Revert if error
+      if (selectedListId) loadListDetails(selectedListId);
+    }
   };
 
   // Filtered tasks computation
@@ -236,7 +319,6 @@ export default function Home() {
         priority: updates.priority,
       });
 
-      // Update local state
       setTasks((prev) =>
         prev.map((t) => {
           if (selectedTaskIds.includes(t.id)) {
@@ -261,13 +343,13 @@ export default function Home() {
     );
   };
 
-  // Show Auth Modal if not authenticated
+  // Auth Loading
   if (isAuthLoading) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-slate-900 text-white">
+      <div className="h-screen w-screen flex items-center justify-center bg-[#F8FAFC]">
         <div className="flex flex-col items-center gap-3">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500" />
-          <span className="text-xs text-slate-400 font-medium">Loading SyncPlan Workspace...</span>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#7B68EE] border-t-transparent" />
+          <span className="text-xs text-slate-500 font-medium">Loading ClickUp Workspace...</span>
         </div>
       </div>
     );
@@ -277,9 +359,12 @@ export default function Home() {
     return <AuthModal />;
   }
 
+  // All projects across spaces for global search
+  const allProjects = spaces.flatMap((s) => s.projects || []);
+
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#090D16] text-slate-900 dark:text-slate-100 flex flex-col font-sans">
-      {/* Top Navigation Bar */}
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col font-sans">
+      {/* Top Navbar */}
       <Navbar
         onOpenSearch={() => setIsSearchOpen(true)}
         onOpenSettings={() => setCurrentTab('settings')}
@@ -288,60 +373,108 @@ export default function Home() {
 
       {/* Main Workspace Layout */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
+        {/* ClickUp Sidebar (Spaces > Projects > Lists) */}
         <Sidebar
           currentTab={currentTab}
+          spaces={spaces}
+          selectedSpaceId={selectedSpaceId}
           selectedProjectId={selectedProjectId}
-          projects={projects}
+          selectedListId={selectedListId}
           activeWorkspace={activeWorkspace}
           onSelectTab={(tab) => setCurrentTab(tab)}
-          onSelectProject={(pId) => {
-            setSelectedProjectId(pId);
-            loadProjectDetails(pId);
+          onSelectSpace={(spaceId) => {
+            setSelectedSpaceId(spaceId);
+            const sp = spaces.find((s) => s.id === spaceId);
+            if (sp) setCurrentSpace(sp);
           }}
-          onNewProject={() => setIsCreateProjectOpen(true)}
+          onSelectProject={(projectId) => {
+            setSelectedProjectId(projectId);
+            loadProjectDetails(projectId);
+          }}
+          onSelectList={(listId) => {
+            loadListDetails(listId);
+          }}
+          onNewSpace={() => setIsCreateSpaceOpen(true)}
+          onNewProject={(spaceId) => {
+            setProjectCreateSpaceId(spaceId || selectedSpaceId || undefined);
+            setIsCreateProjectOpen(true);
+          }}
+          onNewList={(projectId) => {
+            setListCreateProjectId(projectId);
+            setIsCreateListOpen(true);
+          }}
           onInviteMember={() => setIsInviteOpen(true)}
         />
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto px-6 py-6 max-h-[calc(100vh-64px)]">
+        <main className="flex-1 overflow-y-auto px-6 py-5 max-h-[calc(100vh-64px)]">
           {currentTab === 'dashboard' ? (
             <DashboardView
               workspaceId={activeWorkspace?.id || ''}
-              projects={projects}
+              projects={allProjects}
               onSelectTask={(t) => setActiveTaskId(t.id)}
             />
           ) : currentTab === 'settings' && activeWorkspace ? (
             <SettingsView
               workspace={activeWorkspace}
               members={workspaceMembers}
-              onWorkspaceUpdated={(updated) => loadProjects()}
+              onWorkspaceUpdated={() => loadHierarchy()}
               onRefreshMembers={() => {
-                if (selectedProjectId) loadProjectDetails(selectedProjectId);
+                if (selectedListId) loadListDetails(selectedListId);
               }}
             />
           ) : (
-            /* Project Board Area */
+            /* Board View */
             <div>
-              {/* Project Header */}
-              {currentProject && (
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <span
-                      className="w-3.5 h-3.5 rounded-full"
-                      style={{ backgroundColor: currentProject.color }}
-                    />
-                    <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-                      {currentProject.name}
-                    </h1>
-                    <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-slate-200/60 dark:bg-slate-800 text-slate-500">
-                      {currentProject.key}
+              {/* ClickUp Breadcrumbs & Header Bar */}
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-200/80">
+                <div className="flex items-center gap-2 text-xs">
+                  {currentSpace && (
+                    <span className="flex items-center gap-1.5 font-bold text-slate-700">
+                      <span
+                        className="w-2.5 h-2.5 rounded-full"
+                        style={{ backgroundColor: currentSpace.color || '#7B68EE' }}
+                      />
+                      {currentSpace.name}
                     </span>
-                  </div>
-                </div>
-              )}
+                  )}
 
-              {/* Filter & View Toolbar */}
+                  {currentProject && (
+                    <>
+                      <span className="text-slate-300">/</span>
+                      <span className="font-semibold text-slate-700 flex items-center gap-1">
+                        <Folder className="w-3.5 h-3.5 text-slate-400" />
+                        {currentProject.name}
+                      </span>
+                    </>
+                  )}
+
+                  {currentList && (
+                    <>
+                      <span className="text-slate-300">/</span>
+                      <span className="font-bold text-[#7B68EE] bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200/60 flex items-center gap-1">
+                        <ListTodo className="w-3.5 h-3.5 text-[#7B68EE]" />
+                        {currentList.name}
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setTargetColumnId(undefined);
+                      setIsCreateTaskOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#7B68EE] hover:bg-[#6C5CE7] text-white text-xs font-bold rounded-xl shadow-xs transition"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    New Task
+                  </button>
+                </div>
+              </div>
+
+              {/* View Switcher & Filters */}
               <FilterBar
                 currentView={currentView}
                 onViewChange={setCurrentView}
@@ -402,8 +535,8 @@ export default function Home() {
         </main>
       </div>
 
-      {/* Modals */}
-      {/* 1. Task Detail / Edit Modal */}
+      {/* MODALS */}
+      {/* 1. Task Detail / Edit Modal with In-Task Chat & Images */}
       {activeTaskId && (
         <TaskModal
           taskId={activeTaskId}
@@ -422,50 +555,81 @@ export default function Home() {
         />
       )}
 
-      {/* 2. Create Task Modal */}
+      {/* 2. Create Task Modal with In-Task Chat while creating */}
       {isCreateTaskOpen && selectedProjectId && (
         <TaskCreateModal
           projectId={selectedProjectId}
+          listId={selectedListId || undefined}
+          lists={currentProject?.lists || []}
           defaultColumnId={targetColumnId}
           columns={columns}
           workspaceMembers={workspaceMembers}
           onClose={() => setIsCreateTaskOpen(false)}
           onTaskCreated={(newTask) => {
             setTasks((prev) => [...prev, newTask]);
+            loadHierarchy();
           }}
         />
       )}
 
-      {/* 3. Create Project Modal */}
+      {/* 3. Create Space Modal */}
+      {isCreateSpaceOpen && activeWorkspace && (
+        <SpaceCreateModal
+          workspaceId={activeWorkspace.id}
+          onClose={() => setIsCreateSpaceOpen(false)}
+          onSpaceCreated={(newSpace) => {
+            setSpaces((prev) => [...prev, newSpace]);
+            setSelectedSpaceId(newSpace.id);
+            setCurrentSpace(newSpace);
+          }}
+        />
+      )}
+
+      {/* 4. Create Project Modal */}
       {isCreateProjectOpen && activeWorkspace && (
         <ProjectCreateModal
           workspaceId={activeWorkspace.id}
+          spaces={spaces}
+          initialSpaceId={projectCreateSpaceId}
           onClose={() => setIsCreateProjectOpen(false)}
           onProjectCreated={(newProject) => {
-            setProjects((prev) => [newProject, ...prev]);
+            loadHierarchy();
             setSelectedProjectId(newProject.id);
             loadProjectDetails(newProject.id);
           }}
         />
       )}
 
-      {/* 4. Invite Member Modal */}
+      {/* 5. Create List Modal */}
+      {isCreateListOpen && listCreateProjectId && (
+        <ListCreateModal
+          projectId={listCreateProjectId}
+          projectName={allProjects.find((p) => p.id === listCreateProjectId)?.name}
+          onClose={() => setIsCreateListOpen(false)}
+          onListCreated={(newList) => {
+            loadHierarchy();
+            loadListDetails(newList.id);
+          }}
+        />
+      )}
+
+      {/* 6. Invite Member Modal */}
       {isInviteOpen && activeWorkspace && (
         <InviteMemberModal
           workspaceId={activeWorkspace.id}
           onClose={() => setIsInviteOpen(false)}
           onMemberInvited={() => {
-            if (selectedProjectId) loadProjectDetails(selectedProjectId);
+            if (selectedListId) loadListDetails(selectedListId);
           }}
         />
       )}
 
-      {/* 5. Spotlight Search Modal (Cmd+K) */}
+      {/* 7. Spotlight Search Modal */}
       <GlobalSearchModal
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
         tasks={tasks}
-        projects={projects}
+        projects={allProjects}
         onSelectTask={(t) => setActiveTaskId(t.id)}
         onSelectProject={(pId) => {
           setSelectedProjectId(pId);

@@ -6,16 +6,20 @@ export const createComment = async (req: Request, res: Response) => {
   try {
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
     const { taskId } = req.params;
-    const { content } = req.body;
+    const { content, imageUrl } = req.body;
 
-    if (!content || !content.trim()) {
-      return res.status(400).json({ error: 'Comment content cannot be empty' });
+    if ((!content || !content.trim()) && !imageUrl) {
+      return res.status(400).json({ error: 'Message cannot be empty' });
     }
 
     const task = await prisma.task.findUnique({
       where: { id: taskId },
       include: {
-        project: { select: { id: true, key: true, workspaceId: true } },
+        list: {
+          include: {
+            project: { select: { id: true, key: true, space: { select: { workspaceId: true } } } },
+          },
+        },
         assignees: true,
       },
     });
@@ -26,7 +30,8 @@ export const createComment = async (req: Request, res: Response) => {
       data: {
         taskId,
         userId: req.user.id,
-        content,
+        content: content?.trim() || '',
+        imageUrl: imageUrl || null,
       },
       include: {
         user: {
@@ -47,13 +52,17 @@ export const createComment = async (req: Request, res: Response) => {
 
     // Detect @mentions in comment text (e.g., @name or @email)
     const mentionRegex = /@([a-zA-Z0-9._-]+)/g;
-    const matches = content.match(mentionRegex);
+    const matches = content?.match(mentionRegex);
+
+    const projectKey = task.list.project.key;
+    const projectId = task.list.project.id;
+    const workspaceId = task.list.project.space.workspaceId;
 
     if (matches && matches.length > 0) {
       const namesOrUsernames = matches.map((m: string) => m.substring(1).toLowerCase());
 
       const workspaceUsers = await prisma.workspaceMember.findMany({
-        where: { workspaceId: task.project.workspaceId },
+        where: { workspaceId },
         include: { user: true },
       });
 
@@ -73,8 +82,8 @@ export const createComment = async (req: Request, res: Response) => {
               userId: u.id,
               actorId: req.user.id,
               type: 'MENTION',
-              title: `Mentioned in ${task.project.key}-${task.taskNumber}`,
-              message: `${req.user.name} mentioned you: "${content.slice(0, 80)}"`,
+              title: `Mentioned in ${projectKey}-${task.taskNumber}`,
+              message: `${req.user.name} mentioned you in chat: "${content.slice(0, 80)}"`,
               entityType: 'TASK',
               entityId: taskId,
             },
@@ -91,9 +100,9 @@ export const createComment = async (req: Request, res: Response) => {
           data: {
             userId: assignee.userId,
             actorId: req.user.id,
-            type: 'COMMENT',
-            title: `New comment on ${task.project.key}-${task.taskNumber}`,
-            message: `${req.user.name}: "${content.slice(0, 80)}"`,
+            type: 'CHAT',
+            title: `New chat message on ${projectKey}-${task.taskNumber}`,
+            message: `${req.user.name}: "${(content || 'Shared an image').slice(0, 80)}"`,
             entityType: 'TASK',
             entityId: taskId,
           },
@@ -102,7 +111,11 @@ export const createComment = async (req: Request, res: Response) => {
       }
     }
 
-    emitToProject(task.project.id, 'comment:created', { taskId, comment });
+    // Broadcast live to task room and project room
+    const { emitToTask } = await import('../services/socket');
+    emitToTask(taskId, 'chat:message', { taskId, comment });
+    emitToProject(projectId, 'comment:created', { taskId, comment });
+
     return res.status(201).json({ comment });
   } catch (error) {
     console.error('createComment error:', error);

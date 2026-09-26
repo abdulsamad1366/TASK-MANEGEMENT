@@ -45,6 +45,19 @@ export const initSocket = (server: HttpServer) => {
       }
     });
 
+    // In-Task Real-Time Chat Room
+    socket.on('join:task', (taskId: string) => {
+      if (taskId) {
+        socket.join(`task:${taskId}`);
+      }
+    });
+
+    socket.on('leave:task', (taskId: string) => {
+      if (taskId) {
+        socket.leave(`task:${taskId}`);
+      }
+    });
+
     socket.on('join:workspace', (workspaceId: string) => {
       if (workspaceId) {
         socket.join(`workspace:${workspaceId}`);
@@ -62,6 +75,12 @@ export const initSocket = (server: HttpServer) => {
 
 export const getIO = (): SocketIOServer | null => {
   return io;
+};
+
+export const emitToTask = (taskId: string, event: string, data: any) => {
+  if (io) {
+    io.to(`task:${taskId}`).emit(event, data);
+  }
 };
 
 export const emitToProject = (projectId: string, event: string, data: any) => {

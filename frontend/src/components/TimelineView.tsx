@@ -17,11 +17,11 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ tasks, onTaskClick }
   const days = Array.from({ length: totalDays }).map((_, i) => addDays(today, i - 3));
 
   return (
-    <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-sm overflow-x-auto">
-      <div className="min-w-200">
+    <div className="rounded-xl bg-white border border-slate-200/80 p-5 shadow-xs overflow-x-auto">
+      <div className="min-w-[750px]">
         {/* Timeline Header Days */}
-        <div className="flex border-b border-slate-200 dark:border-slate-800 pb-3 mb-4">
-          <div className="w-64 font-bold text-xs text-slate-400 uppercase tracking-wider shrink-0">
+        <div className="flex border-b border-slate-200 pb-2.5 mb-3">
+          <div className="w-56 font-bold text-xs text-slate-400 uppercase tracking-wider shrink-0">
             Task
           </div>
           <div className="flex-1 grid grid-cols-21 gap-1 text-center">
@@ -29,9 +29,9 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ tasks, onTaskClick }
               <div
                 key={idx}
                 className={cn(
-                  'text-[10px] font-semibold py-1 rounded',
+                  'text-[10px] font-semibold py-0.5 rounded',
                   format(d, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd')
-                    ? 'bg-indigo-600 text-white font-bold'
+                    ? 'bg-[#7B68EE] text-white font-bold'
                     : 'text-slate-500'
                 )}
               >
@@ -43,7 +43,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ tasks, onTaskClick }
         </div>
 
         {/* Task Rows */}
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {tasks.map((task) => {
             const p = getPriorityBadge(task.priority);
 
@@ -56,13 +56,13 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ tasks, onTaskClick }
             const spanDays = Math.max(1, endOffset - startOffset + 1);
 
             return (
-              <div key={task.id} className="flex items-center group py-1">
+              <div key={task.id} className="flex items-center group py-0.5">
                 {/* Task Label on left */}
                 <div
                   onClick={() => onTaskClick(task)}
-                  className="w-64 shrink-0 cursor-pointer pr-4"
+                  className="w-56 shrink-0 cursor-pointer pr-4"
                 >
-                  <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition">
+                  <div className="text-xs font-semibold text-slate-800 truncate group-hover:text-[#7B68EE] transition">
                     {task.title}
                   </div>
                   <div className="text-[10px] text-slate-400 font-mono">
@@ -71,7 +71,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ tasks, onTaskClick }
                 </div>
 
                 {/* Timeline Bar Container */}
-                <div className="flex-1 relative h-8 bg-slate-50 dark:bg-slate-800/40 rounded-lg flex items-center px-1">
+                <div className="flex-1 relative h-7 bg-slate-50 rounded-lg flex items-center px-1">
                   <div
                     onClick={() => onTaskClick(task)}
                     style={{
@@ -79,7 +79,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ tasks, onTaskClick }
                       width: `${(spanDays / totalDays) * 100}%`,
                     }}
                     className={cn(
-                      'absolute h-6 rounded-md px-2 flex items-center justify-between text-[11px] font-semibold cursor-pointer shadow-sm hover:opacity-90 transition-all border',
+                      'absolute h-5.5 rounded-md px-2 flex items-center justify-between text-[10px] font-semibold cursor-pointer shadow-xs hover:opacity-90 transition-all border',
                       p.bg,
                       p.text,
                       p.border

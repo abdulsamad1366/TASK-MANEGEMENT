@@ -5,7 +5,7 @@ import { DragDropContext, Droppable, DropResult } from '@hello-pangea/dnd';
 import confetti from 'canvas-confetti';
 import { BoardColumn, Task } from '../types';
 import { TaskCard } from './TaskCard';
-import { Plus, MoreHorizontal } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface KanbanBoardProps {
@@ -29,7 +29,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   selectedTaskIds = [],
   onSelectTask,
 }) => {
-  // Local optimistic state for fluid 60fps drag & drop
   const [localTasks, setLocalTasks] = useState<Task[]>(tasks);
 
   React.useEffect(() => {
@@ -69,7 +68,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       newOrder = (prevOrder + nextOrder) / 2;
     }
 
-    // Check if moved into a completed column -> fire celebratory confetti!
+    // Check if moved into a completed column -> celebratory confetti!
     const targetColumn = columns.find((c) => c.id === destColId);
     if (targetColumn?.isCompleted && sourceColId !== destColId) {
       try {
@@ -95,14 +94,13 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       await onTaskMove(draggableId, destColId, newOrder);
     } catch (err) {
       console.error('Failed to sync task move:', err);
-      // Revert to props tasks if API call fails
       setLocalTasks(tasks);
     }
   };
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>
-      <div className="flex gap-5 overflow-x-auto pb-6 pt-2 items-start min-h-[calc(100vh-230px)] select-none">
+      <div className="flex gap-4 overflow-x-auto pb-6 pt-1 items-start min-h-[calc(100vh-210px)] select-none">
         {columns.map((column) => {
           const colTasks = localTasks
             .filter((t) => t.columnId === column.id)
@@ -111,35 +109,30 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           return (
             <div
               key={column.id}
-              className="shrink-0 w-80 flex flex-col rounded-2xl bg-slate-100/70 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 max-h-[calc(100vh-220px)]"
+              className="shrink-0 w-80 flex flex-col rounded-2xl bg-slate-50/70 border border-slate-200/80 max-h-[calc(100vh-210px)] shadow-xs"
             >
               {/* Column Header */}
-              <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-200/60 dark:border-slate-800/60">
+              <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-200/60 bg-white/60 rounded-t-2xl">
                 <div className="flex items-center gap-2">
                   <span
-                    className="w-2.5 h-2.5 rounded-full"
-                    style={{ backgroundColor: column.color || '#6366f1' }}
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: column.color || '#7B68EE' }}
                   />
-                  <h3 className="font-semibold text-sm text-slate-800 dark:text-slate-100">
+                  <h3 className="font-bold text-xs text-slate-800">
                     {column.name}
                   </h3>
-                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-500">
                     {colTasks.length}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => onAddTask(column.id)}
-                    title="Add task to this column"
-                    className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                  <button className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition">
-                    <MoreHorizontal className="w-4 h-4" />
-                  </button>
-                </div>
+                <button
+                  onClick={() => onAddTask(column.id)}
+                  title="Add task to this column"
+                  className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
               </div>
 
               {/* Droppable Task List */}
@@ -149,8 +142,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     ref={provided.innerRef}
                     {...provided.droppableProps}
                     className={cn(
-                      'flex-1 p-2.5 space-y-2.5 overflow-y-auto min-h-35 transition-colors',
-                      snapshot.isDraggingOver && 'bg-indigo-500/5 dark:bg-indigo-500/10 rounded-b-2xl'
+                      'flex-1 p-2 space-y-2 overflow-y-auto min-h-35 transition-colors',
+                      snapshot.isDraggingOver && 'bg-purple-50/40 rounded-b-2xl'
                     )}
                   >
                     {colTasks.map((task, idx) => (
@@ -168,9 +161,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     {colTasks.length === 0 && !snapshot.isDraggingOver && (
                       <div
                         onClick={() => onAddTask(column.id)}
-                        className="h-24 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 dark:border-slate-800/80 rounded-xl text-xs text-slate-400 dark:text-slate-500 cursor-pointer hover:border-indigo-400/50 hover:text-indigo-500 transition"
+                        className="h-20 flex flex-col items-center justify-center border border-dashed border-slate-200 rounded-xl text-xs text-slate-400 cursor-pointer hover:border-purple-300 hover:text-[#7B68EE] transition"
                       >
-                        <Plus className="w-4 h-4 mb-1" />
+                        <Plus className="w-3.5 h-3.5 mb-0.5" />
                         <span>Add task</span>
                       </div>
                     )}
@@ -179,10 +172,10 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               </Droppable>
 
               {/* Quick Add Button at bottom of column */}
-              <div className="p-2 border-t border-slate-200/50 dark:border-slate-800/50">
+              <div className="p-2 border-t border-slate-200/50 bg-white/40 rounded-b-2xl">
                 <button
                   onClick={() => onAddTask(column.id)}
-                  className="w-full py-2 px-3 flex items-center justify-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white dark:hover:bg-slate-800/80 rounded-xl transition shadow-sm"
+                  className="w-full py-1.5 px-3 flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#7B68EE] hover:bg-white rounded-lg transition"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>New Task</span>
@@ -192,14 +185,14 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           );
         })}
 
-        {/* Add New Column Column Button */}
+        {/* Add Column Button */}
         {onAddColumn && (
           <button
             onClick={onAddColumn}
-            className="shrink-0 w-80 h-14 flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700 transition text-sm font-medium"
+            className="shrink-0 w-80 h-12 flex items-center justify-center gap-2 border border-dashed border-slate-200 rounded-2xl text-slate-400 hover:text-slate-700 hover:border-slate-300 transition text-xs font-semibold"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Column</span>
+            <span>Add Status Column</span>
           </button>
         )}
       </div>
