@@ -1,6 +1,14 @@
 const getApiBaseUrl = (): string => {
-  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  let envUrl = process.env.NEXT_PUBLIC_API_URL;
   if (typeof window !== 'undefined') {
+    // If page is on HTTPS, ensure envUrl is also HTTPS (prevents redirects that strip auth headers)
+    if (envUrl && window.location.protocol === 'https:' && envUrl.startsWith('http://') && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+      envUrl = envUrl.replace('http://', 'https://');
+    }
+    if (envUrl) {
+      envUrl = envUrl.replace(/\/+$/, '');
+    }
+
     // If running in browser on mobile or non-localhost host, bypass localhost env URL
     if (envUrl && envUrl.includes('localhost') && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
       return '/api';
@@ -11,7 +19,8 @@ const getApiBaseUrl = (): string => {
     // In browser (desktop or mobile), relative /api routes smoothly through Next.js proxy
     return '/api';
   }
-  return envUrl || (process.env.BACKEND_URL ? `${process.env.BACKEND_URL}/api` : 'http://localhost:5001/api');
+  let fallback = envUrl || (process.env.BACKEND_URL ? `${process.env.BACKEND_URL.replace(/\/+$/, '')}/api` : 'http://localhost:5001/api');
+  return fallback.replace(/\/+$/, '');
 };
 
 class ApiClient {
@@ -25,6 +34,7 @@ class ApiClient {
       const token = localStorage.getItem('task_access_token');
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
+        headers['x-access-token'] = token;
       }
     }
 

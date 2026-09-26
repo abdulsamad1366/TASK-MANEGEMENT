@@ -20,12 +20,21 @@ declare global {
 
 export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    let token: string | undefined;
+
+    const authHeader = req.headers.authorization || (req.headers['authorization'] as string);
+    if (authHeader) {
+      token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : authHeader.trim();
+    } else if (req.headers['x-access-token']) {
+      token = String(req.headers['x-access-token']).trim();
+    } else if (req.query?.token) {
+      token = String(req.query.token).trim();
+    }
+
+    if (!token) {
       return res.status(401).json({ error: 'Authentication required. No token provided.' });
     }
 
-    const token = authHeader.split(' ')[1];
     let payload: TokenPayload;
 
     try {
