@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 
+// Type refreshed for Prisma Client schema
 declare global {
   // eslint-disable-next-line no-var
   var prisma: PrismaClient | undefined;
