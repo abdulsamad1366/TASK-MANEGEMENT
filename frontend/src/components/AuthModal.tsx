@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Lock, Mail, User as UserIcon, ArrowRight, Sparkles } from 'lucide-react';
+import { Lock, Mail, User as UserIcon, ArrowRight } from 'lucide-react';
 import { FlowdeskLogo } from './FlowdeskLogo';
 
 export const AuthModal: React.FC = () => {
@@ -32,18 +32,6 @@ export const AuthModal: React.FC = () => {
     }
   };
 
-  const handleQuickLogin = async (demoEmail: string) => {
-    setIsLoading(true);
-    setError('');
-    try {
-      await login({ email: demoEmail, password: 'Password123!' });
-    } catch (err: any) {
-      setError(err.message || 'Demo login failed');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-[2px] select-none">
       <div className="relative w-full max-w-md bg-white border border-slate-200/80 rounded-3xl shadow-2xl overflow-hidden p-8">
@@ -56,51 +44,6 @@ export const AuthModal: React.FC = () => {
           <p className="text-xs text-slate-500 mt-1">
             Clean, light, minimal team task management
           </p>
-        </div>
-
-        {/* 1-Click Demo Accounts */}
-        <div className="mb-6 p-3 rounded-2xl bg-purple-50/60 border border-purple-100">
-          <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#7B68EE] uppercase tracking-wider mb-2">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Instant Demo Accounts (Click to log in)</span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('admin@acme.com')}
-              className="text-left p-2 rounded-xl bg-white border border-slate-200/80 hover:border-[#7B68EE] transition text-[11px] shadow-2xs"
-            >
-              <div className="font-bold text-slate-800 truncate">Sarah Connor</div>
-              <div className="text-[10px] text-[#7B68EE] font-semibold">Admin Role</div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('manager@acme.com')}
-              className="text-left p-2 rounded-xl bg-white border border-slate-200/80 hover:border-[#7B68EE] transition text-[11px] shadow-2xs"
-            >
-              <div className="font-bold text-slate-800 truncate">Alex Rivera</div>
-              <div className="text-[10px] text-amber-500 font-semibold">Manager Role</div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('priya@acme.com')}
-              className="text-left p-2 rounded-xl bg-white border border-slate-200/80 hover:border-[#7B68EE] transition text-[11px] shadow-2xs"
-            >
-              <div className="font-bold text-slate-800 truncate">Priya Patel</div>
-              <div className="text-[10px] text-slate-400 font-medium">Product / Member</div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('david@acme.com')}
-              className="text-left p-2 rounded-xl bg-white border border-slate-200/80 hover:border-[#7B68EE] transition text-[11px] shadow-2xs"
-            >
-              <div className="font-bold text-slate-800 truncate">David Chen</div>
-              <div className="text-[10px] text-emerald-600 font-semibold">Tech Lead</div>
-            </button>
-          </div>
         </div>
 
         {/* Tab Toggle: Sign In vs Sign Up */}

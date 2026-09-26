@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Lock, Mail, User as UserIcon, ArrowRight, Sparkles, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, User as UserIcon, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { FlowdeskLogo } from './FlowdeskLogo';
 
 interface AuthScreenProps {
@@ -61,22 +61,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       }
     } catch (err: any) {
       setError(err.message || 'Authentication failed. Please check your credentials.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleQuickLogin = async (demoEmail: string) => {
-    setIsLoading(true);
-    setError('');
-    try {
-      const res = await login({ email: demoEmail, password: 'Password123!', inviteToken });
-      const hasWorkspaces = res.user?.workspaces && res.user.workspaces.length > 0;
-      if (onLoginSuccess) {
-        onLoginSuccess(hasWorkspaces);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Demo login failed');
     } finally {
       setIsLoading(false);
     }
@@ -216,39 +200,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
-
-        {/* 1-Click Instant Demo Accounts */}
-        {!inviteToken && (
-          <div className="mt-6 pt-5 border-t border-slate-100">
-            <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#7B68EE] uppercase tracking-wider mb-2.5">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Instant 1-Click Demo Logins</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('admin@acme.com')}
-                className="text-left p-2.5 rounded-xl bg-slate-50 hover:bg-purple-50/50 border border-slate-200/80 hover:border-[#7B68EE] transition text-[11px] shadow-2xs group"
-              >
-                <div className="font-bold text-slate-800 truncate group-hover:text-[#7B68EE]">
-                  Sarah Connor
-                </div>
-                <div className="text-[10px] text-slate-400 font-medium">Acme Admin</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('manager@acme.com')}
-                className="text-left p-2.5 rounded-xl bg-slate-50 hover:bg-purple-50/50 border border-slate-200/80 hover:border-[#7B68EE] transition text-[11px] shadow-2xs group"
-              >
-                <div className="font-bold text-slate-800 truncate group-hover:text-[#7B68EE]">
-                  Alex Rivera
-                </div>
-                <div className="text-[10px] text-slate-400 font-medium">Product Manager</div>
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

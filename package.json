@@ -10,6 +10,7 @@
     "build:frontend": "cd frontend && npm run build",
     "build": "npm run build:backend && npm run build:frontend",
     "seed": "cd backend && npm run seed",
+    "db:clean": "cd backend && npm run db:clean",
     "db:sqlite": "cd backend && npm run db:sqlite",
     "db:supabase": "cd backend && npm run db:supabase"
   },
