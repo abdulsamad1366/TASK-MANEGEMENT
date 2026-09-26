@@ -9,8 +9,15 @@ interface AuthContextType {
   workspaces: any[];
   activeWorkspace: Workspace | null;
   isLoading: boolean;
-  login: (credentials: { email: string; password: string }) => Promise<void>;
-  register: (data: { email: string; password: string; name: string; role?: string }) => Promise<void>;
+  login: (credentials: { email: string; password: string; inviteToken?: string }) => Promise<any>;
+  register: (data: {
+    email: string;
+    password: string;
+    name: string;
+    role?: string;
+    inviteToken?: string;
+    createDefaultWorkspace?: boolean;
+  }) => Promise<any>;
   logout: () => void;
   setActiveWorkspace: (workspace: Workspace) => void;
   refreshUser: () => Promise<void>;
@@ -69,38 +76,57 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     fetchProfile();
   }, []);
 
-  const login = async (credentials: { email: string; password: string }) => {
+  const login = async (credentials: { email: string; password: string; inviteToken?: string }) => {
     setIsLoading(true);
     try {
       const res = await api.login(credentials);
       localStorage.setItem('task_access_token', res.tokens.accessToken);
       localStorage.setItem('task_refresh_token', res.tokens.refreshToken);
       setUser(res.user);
-      setWorkspaces(res.user.workspaces || []);
+      const wsList = res.user.workspaces || [];
+      setWorkspaces(wsList);
 
-      if (res.user.workspaces?.length > 0) {
-        const first = res.user.workspaces[0];
+      if (wsList.length > 0) {
+        const first = wsList[0];
         localStorage.setItem('task_active_workspace_id', first.workspaceId || first.id);
-        const wsDetail = await api.getWorkspace(first.workspaceId || first.id);
-        setActiveWorkspaceState(wsDetail.workspace);
+        try {
+          const wsDetail = await api.getWorkspace(first.workspaceId || first.id);
+          setActiveWorkspaceState(wsDetail.workspace);
+        } catch {
+          setActiveWorkspaceState(first);
+        }
+      } else {
+        setActiveWorkspaceState(null);
       }
+      return res;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const register = async (data: { email: string; password: string; name: string; role?: string }) => {
+  const register = async (data: {
+    email: string;
+    password: string;
+    name: string;
+    role?: string;
+    inviteToken?: string;
+    createDefaultWorkspace?: boolean;
+  }) => {
     setIsLoading(true);
     try {
       const res = await api.register(data);
       localStorage.setItem('task_access_token', res.tokens.accessToken);
       localStorage.setItem('task_refresh_token', res.tokens.refreshToken);
       setUser(res.user);
+      const wsList = res.user.workspaces || [];
+      setWorkspaces(wsList);
       if (res.defaultWorkspace) {
         localStorage.setItem('task_active_workspace_id', res.defaultWorkspace.id);
         setActiveWorkspaceState(res.defaultWorkspace);
-        setWorkspaces([res.defaultWorkspace]);
+      } else {
+        setActiveWorkspaceState(null);
       }
+      return res;
     } finally {
       setIsLoading(false);
     }

@@ -18,6 +18,7 @@ import taskRoutes from './routes/taskRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
 import hierarchyRoutes from './routes/hierarchyRoutes';
+import invitationRoutes from './routes/invitationRoutes';
 
 const app = express();
 const server = http.createServer(app);
@@ -76,6 +77,7 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/invitations', invitationRoutes);
 app.use('/api', hierarchyRoutes);
 
 // 404 Handler

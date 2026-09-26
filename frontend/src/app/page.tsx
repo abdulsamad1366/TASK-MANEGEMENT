@@ -32,16 +32,19 @@ import { InviteMemberModal } from '../components/InviteMemberModal';
 import { GlobalSearchModal } from '../components/GlobalSearchModal';
 import { WorkspaceCreateModal } from '../components/WorkspaceCreateModal';
 import { GlobalTasksView } from '../components/GlobalTasksView';
+import { AuthScreen } from '../components/AuthScreen';
+import { OnboardingWizard } from '../components/OnboardingWizard';
 import { AuthModal } from '../components/AuthModal';
 import { Sparkles, Plus, Layers, Folder, ListTodo } from 'lucide-react';
 
 export default function Home() {
-  const { user, activeWorkspace, isLoading: isAuthLoading, refreshUser, setActiveWorkspace } = useAuth();
+  const { user, workspaces, activeWorkspace, isLoading: isAuthLoading, refreshUser, setActiveWorkspace } = useAuth();
 
   // Navigation & View state
   const [currentTab, setCurrentTab] = useState<'dashboard' | 'project' | 'settings' | 'global-tasks'>('project');
   const [currentView, setCurrentView] = useState<BoardView>('kanban');
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
+  const [isOnboarding, setIsOnboarding] = useState(false);
 
   // ClickUp Hierarchy State: Spaces > Projects > Lists
   const [spaces, setSpaces] = useState<Space[]>([]);
@@ -358,8 +361,32 @@ export default function Home() {
     );
   }
 
+  // SCREEN 1: Single page tabbed Auth screen (Log in / Sign up)
   if (!user) {
-    return <AuthModal />;
+    return (
+      <AuthScreen
+        onLoginSuccess={(hasWorkspaces) => {
+          if (!hasWorkspaces) {
+            setIsOnboarding(true);
+          }
+        }}
+        onSignupSuccess={() => {
+          setIsOnboarding(true);
+        }}
+      />
+    );
+  }
+
+  // SCREENS 2, 3, 4: Onboarding Flow (Workspace Creation -> Invite Teammates -> Confirmation)
+  if (isOnboarding || workspaces.length === 0 || !activeWorkspace) {
+    return (
+      <OnboardingWizard
+        onComplete={(newWs) => {
+          setIsOnboarding(false);
+          setActiveWorkspace(newWs);
+        }}
+      />
+    );
   }
 
   // All projects across spaces for global search

@@ -434,3 +434,90 @@ export const removeMember = async (req: Request, res: Response) => {
     return res.status(500).json({ error: 'Failed to remove member' });
   }
 };
+
+export const batchInviteMembers = async (req: Request, res: Response) => {
+  try {
+    const { id: workspaceId } = req.params;
+    const { emails, role = 'MEMBER' } = req.body;
+
+    if (!Array.isArray(emails) || emails.length === 0) {
+      return res.status(400).json({ error: 'Please provide a non-empty list of emails' });
+    }
+
+    const workspace = await prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      include: {
+        members: { include: { user: true } },
+      },
+    });
+
+    if (!workspace) {
+      return res.status(404).json({ error: 'Workspace not found' });
+    }
+
+    const results = [];
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    for (const rawEmail of emails) {
+      const email = String(rawEmail).trim().toLowerCase();
+      if (!email || !email.includes('@')) continue;
+
+      // Check if user already exists
+      const existingUser = await prisma.user.findUnique({ where: { email } });
+
+      if (existingUser) {
+        const isMember = workspace.members.some((m) => m.userId === existingUser.id);
+        if (!isMember) {
+          // Direct membership add
+          await prisma.workspaceMember.create({
+            data: {
+              workspaceId,
+              userId: existingUser.id,
+              role: role as any,
+            },
+          });
+
+          await prisma.notification.create({
+            data: {
+              userId: existingUser.id,
+              actorId: req.user!.id,
+              type: 'ASSIGNMENT',
+              title: `Added to ${workspace.name}`,
+              message: `${req.user!.name} invited and added you to ${workspace.name} as ${role}`,
+              entityId: workspaceId,
+            },
+          });
+        }
+      }
+
+      // Generate unique token
+      const token = Buffer.from(
+        `${workspaceId}:${email}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`
+      ).toString('base64url');
+
+      const invitation = await prisma.workspaceInvitation.create({
+        data: {
+          workspaceId,
+          email,
+          role: role as any,
+          token,
+          invitedById: req.user?.id,
+          status: 'PENDING',
+          expiresAt,
+        },
+      });
+
+      console.log(`[EMAIL INVITE] Dispatched invite to ${email} for workspace ${workspace.name}. Link: /invite/${token}`);
+      results.push({ email, invitation, inviteLink: `/invite/${token}` });
+    }
+
+    return res.status(201).json({
+      message: `${results.length} invitations processed successfully`,
+      invitations: results,
+    });
+  } catch (error) {
+    console.error('batchInviteMembers error:', error);
+    return res.status(500).json({ error: 'Failed to process team invitations' });
+  }
+};
+

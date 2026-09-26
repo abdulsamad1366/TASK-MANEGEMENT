@@ -25,6 +25,7 @@ export const requireWorkspaceRole = (allowedRoles: string[]) => {
 
     const workspaceId =
       req.params.workspaceId ||
+      req.params.id ||
       req.body.workspaceId ||
       (req.query.workspaceId as string);
 

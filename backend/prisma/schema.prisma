@@ -125,6 +125,7 @@ model WorkspaceInvitation {
   role        Role             @default(MEMBER)
   token       String           @unique
   status      InvitationStatus @default(PENDING)
+  invitedById String?
   expiresAt   DateTime
   createdAt   DateTime         @default(now())
 

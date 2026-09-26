@@ -65,11 +65,17 @@ class ApiClient {
   }
 
   // Auth endpoints
-  login = (credentials: { email: string; password: string }) =>
+  login = (credentials: { email: string; password: string; inviteToken?: string }) =>
     this.request<any>('/auth/login', { method: 'POST', body: JSON.stringify(credentials) });
 
-  register = (userData: { email: string; password: string; name: string; role?: string }) =>
-    this.request<any>('/auth/register', { method: 'POST', body: JSON.stringify(userData) });
+  register = (userData: {
+    email: string;
+    password: string;
+    name: string;
+    role?: string;
+    inviteToken?: string;
+    createDefaultWorkspace?: boolean;
+  }) => this.request<any>('/auth/register', { method: 'POST', body: JSON.stringify(userData) });
 
   getMe = () => this.request<any>('/auth/me');
 
@@ -93,6 +99,16 @@ class ApiClient {
     this.request<any>(`/workspaces/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
   inviteMember = (workspaceId: string, data: { email: string; role: string }) =>
     this.request<any>(`/workspaces/${workspaceId}/invite`, { method: 'POST', body: JSON.stringify(data) });
+  batchInviteMembers = (workspaceId: string, data: { emails: string[]; role?: string }) =>
+    this.request<any>(`/workspaces/${workspaceId}/invites/batch`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+
+  // Invitations
+  getInvitation = (token: string) => this.request<any>(`/invitations/${token}`);
+  acceptInvitation = (token: string) =>
+    this.request<any>(`/invitations/${token}/accept`, { method: 'POST' });
   updateMemberRole = (workspaceId: string, memberId: string, role: string) =>
     this.request<any>(`/workspaces/${workspaceId}/members/${memberId}`, {
       method: 'PATCH',

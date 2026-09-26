@@ -10,6 +10,8 @@ export const registerSchema = z.object({
     password: z.string().min(6, 'Password must be at least 6 characters'),
     name: z.string().min(2, 'Name must be at least 2 characters'),
     role: z.enum(['ADMIN', 'MANAGER', 'MEMBER']).optional(),
+    inviteToken: z.string().optional(),
+    createDefaultWorkspace: z.boolean().optional(),
   }),
 });
 
@@ -17,12 +19,13 @@ export const loginSchema = z.object({
   body: z.object({
     email: z.string().email(),
     password: z.string().min(1, 'Password is required'),
+    inviteToken: z.string().optional(),
   }),
 });
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const { email, password, name, role = 'MEMBER' } = req.body;
+    const { email, password, name, role = 'MEMBER', inviteToken, createDefaultWorkspace = false } = req.body;
 
     const existingUser = await prisma.user.findUnique({
       where: { email: email.toLowerCase() },
@@ -52,21 +55,49 @@ export const register = async (req: Request, res: Response) => {
       },
     });
 
-    // Create default workspace for new user
-    const slug = `${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-workspace-${Date.now().toString().slice(-4)}`;
-    const workspace = await prisma.workspace.create({
-      data: {
-        name: `${name}'s Workspace`,
-        slug,
-        ownerId: user.id,
-        members: {
-          create: {
+    let defaultWorkspace = null;
+
+    // Handle invite token if provided on signup
+    if (inviteToken) {
+      const invitation = await prisma.workspaceInvitation.findUnique({
+        where: { token: inviteToken },
+        include: { workspace: true },
+      });
+
+      if (invitation && invitation.status === 'PENDING' && new Date(invitation.expiresAt) > new Date()) {
+        await prisma.workspaceMember.create({
+          data: {
+            workspaceId: invitation.workspaceId,
             userId: user.id,
-            role: 'ADMIN',
+            role: invitation.role,
+          },
+        });
+
+        await prisma.workspaceInvitation.update({
+          where: { id: invitation.id },
+          data: { status: 'ACCEPTED' },
+        });
+
+        defaultWorkspace = invitation.workspace;
+      }
+    } else if (createDefaultWorkspace) {
+      // Create default workspace only if explicitly requested
+      const slug = `${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-workspace-${Date.now().toString().slice(-4)}`;
+      defaultWorkspace = await prisma.workspace.create({
+        data: {
+          name: `${name}'s Workspace`,
+          slug,
+          type: 'PERSONAL',
+          ownerId: user.id,
+          members: {
+            create: {
+              userId: user.id,
+              role: 'ADMIN',
+            },
           },
         },
-      },
-    });
+      });
+    }
 
     const tokens = generateTokens({
       userId: user.id,
@@ -76,9 +107,23 @@ export const register = async (req: Request, res: Response) => {
 
     return res.status(201).json({
       message: 'User registered successfully',
-      user,
+      user: {
+        ...user,
+        workspaces: defaultWorkspace
+          ? [
+              {
+                id: defaultWorkspace.id,
+                workspaceId: defaultWorkspace.id,
+                name: defaultWorkspace.name,
+                slug: defaultWorkspace.slug,
+                type: defaultWorkspace.type,
+                role: 'ADMIN',
+              },
+            ]
+          : [],
+      },
       tokens,
-      defaultWorkspace: workspace,
+      defaultWorkspace,
     });
   } catch (error) {
     console.error('Register error:', error);
@@ -88,7 +133,7 @@ export const register = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, inviteToken } = req.body;
 
     const user = await prisma.user.findUnique({
       where: { email: email.toLowerCase() },
@@ -96,7 +141,16 @@ export const login = async (req: Request, res: Response) => {
         workspaceMemberships: {
           include: {
             workspace: {
-              select: { id: true, name: true, slug: true, logoUrl: true },
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                logoUrl: true,
+                type: true,
+                plan: true,
+                joinPolicy: true,
+                inviteCode: true,
+              },
             },
           },
         },
@@ -112,20 +166,71 @@ export const login = async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
+    // If an invite token was provided during login, accept it
+    if (inviteToken) {
+      const invitation = await prisma.workspaceInvitation.findUnique({
+        where: { token: inviteToken },
+        include: { workspace: true },
+      });
+
+      if (invitation && invitation.status === 'PENDING' && new Date(invitation.expiresAt) > new Date()) {
+        const isMember = user.workspaceMemberships.some((m) => m.workspaceId === invitation.workspaceId);
+        if (!isMember) {
+          await prisma.workspaceMember.create({
+            data: {
+              workspaceId: invitation.workspaceId,
+              userId: user.id,
+              role: invitation.role,
+            },
+          });
+        }
+
+        await prisma.workspaceInvitation.update({
+          where: { id: invitation.id },
+          data: { status: 'ACCEPTED' },
+        });
+      }
+    }
+
+    // Refetch memberships if invite was accepted
+    const updatedUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: {
+        workspaceMemberships: {
+          include: {
+            workspace: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                logoUrl: true,
+                type: true,
+                plan: true,
+                joinPolicy: true,
+                inviteCode: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const activeUser = updatedUser || user;
+
     const tokens = generateTokens({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
+      userId: activeUser.id,
+      email: activeUser.email,
+      role: activeUser.role,
     });
 
     const userWithoutPassword = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      avatarUrl: user.avatarUrl,
-      role: user.role,
-      notificationSettings: user.notificationSettings,
-      workspaces: user.workspaceMemberships.map((m) => ({
+      id: activeUser.id,
+      email: activeUser.email,
+      name: activeUser.name,
+      avatarUrl: activeUser.avatarUrl,
+      role: activeUser.role,
+      notificationSettings: activeUser.notificationSettings,
+      workspaces: activeUser.workspaceMemberships.map((m) => ({
         workspaceId: m.workspaceId,
         role: m.role,
         ...m.workspace,
