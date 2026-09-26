@@ -28,7 +28,7 @@ export const FlowdeskLogo: React.FC<FlowdeskLogoProps> = ({
     <div className={`flex items-center gap-2 select-none ${className}`}>
       {/* Flowdesk Ribbon Icon */}
       <div
-        className={`${box} rounded-xl bg-gradient-to-tr from-[#6366F1] via-[#7B68EE] to-[#06B6D4] p-1 flex items-center justify-center shadow-xs transition-transform hover:scale-105`}
+        className={`${box} rounded-xl bg-linear-to-tr from-[#6366F1] via-[#7B68EE] to-[#06B6D4] p-1 flex items-center justify-center shadow-xs transition-transform hover:scale-105`}
       >
         <svg
           viewBox="0 0 32 32"
