@@ -5,9 +5,12 @@ import { AuthProvider } from '../context/AuthContext';
 import { NotificationProvider } from '../context/NotificationContext';
 
 export const metadata: Metadata = {
-  title: 'SyncPlan — Team Task & Project Management',
+  title: 'Flowdesk — Team Task & Project Management',
   description:
-    'Modern Jira / Asana / Linear style project management workspace for high-velocity software engineering and product teams.',
+    'Clean, light, minimal team task management and real-time collaboration platform.',
+  icons: {
+    icon: '/logo.png',
+  },
 };
 
 export default function RootLayout({
@@ -16,8 +19,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
-      <body className="antialiased min-h-screen">
+    <html lang="en" className="light" suppressHydrationWarning>
+      <body className="antialiased min-h-screen bg-[#F8FAFC] text-slate-800">
         <ThemeProvider>
           <AuthProvider>
             <NotificationProvider>{children}</NotificationProvider>

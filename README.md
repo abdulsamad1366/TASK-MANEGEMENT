@@ -1,6 +1,12 @@
-# ClickUp-Modeled Team Task & Project Management Web Application
+# Flowdesk — Team Task & Project Management
 
-A full-featured, high-velocity team task management web application closely modeled after **ClickUp** — featuring a clean, light, minimal UI, generous whitespace, subtle borders, signature `#7B68EE` purple accents, and a robust multi-tier organization hierarchy.
+<p align="center">
+  <img src="frontend/public/logo.png" alt="Flowdesk Logo" width="120" style="border-radius: 24px;" />
+</p>
+
+<p align="center">
+  <strong>Flowdesk</strong> is a full-featured, high-velocity team task management web application — featuring a clean, light, minimal UI, generous whitespace, subtle borders, signature <code>#7B68EE</code> purple accents, and a robust 5-tier organization hierarchy.
+</p>
 
 ---
 
@@ -20,18 +26,18 @@ A full-featured, high-velocity team task management web application closely mode
 
 ## 🎨 Design Direction
 
-- **Light Color Scheme Only**: Clean off-white and pure white backgrounds (`#F8FAFC`, `#FFFFFF`), soft grays (`#E2E8F0`), and ClickUp purple accent (`#7B68EE`).
+- **Light Color Scheme Only**: Clean off-white and pure white backgrounds (`#F8FAFC`, `#FFFFFF`), soft grays (`#E2E8F0`), and Flowdesk purple accent (`#7B68EE`).
 - **Minimal, Uncluttered Layout**: Generous whitespace, subtle borders/shadows instead of heavy dividers.
 - **Clean Sans-Serif Typography**: Standard modern sans font stack (`Inter`, system UI).
-- **ClickUp Architecture**: Sidebar navigation (`Spaces > Projects > Lists`), top bar with view switcher, card-based task rows with cover image previews.
+- **Flowdesk Architecture**: Sidebar navigation (`Spaces > Projects > Lists`), top bar with view switcher, card-based task rows with cover image previews.
 
 ---
 
 ## 🚀 Core Features
 
-### 1. ClickUp 5-Tier Hierarchy
+### 1. 5-Tier Workspace Hierarchy
 - **Workspace > Space > Project > List > Task**:
-  - **Spaces** (e.g. `Engineering`, `Product & Design`) with custom icons and color dots.
+  - **Spaces** (e.g. `Engineering`, `Product & Design`) with custom icons and color badges.
   - **Projects** (e.g. `Mobile App 3.0` [APP], `API Infrastructure` [API]).
   - **Lists** (e.g. `Sprint 24 - Launch`, `Product Backlog`) with customizable status columns (`To Do`, `In Progress`, `In Review`, `Done`).
   - **Tasks** assigned to any team member with rich specifications.
@@ -84,7 +90,7 @@ cd ..
 
 ### 3. Setup Database & Seed Sample Data
 ```bash
-# Push Prisma schema to local database and seed ClickUp demo hierarchy:
+# Push Prisma schema to local database and seed Flowdesk demo hierarchy:
 npm run db:sqlite
 npm run seed
 ```

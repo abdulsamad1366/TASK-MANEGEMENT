@@ -230,7 +230,7 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
           <div className="flex items-center gap-3">
             <span className="px-2.5 py-1 rounded-md bg-purple-50 text-[#7B68EE] text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5" />
-              New ClickUp Task
+              New Flowdesk Task
             </span>
 
             {/* List Picker if multiple lists */}

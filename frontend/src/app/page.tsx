@@ -349,7 +349,7 @@ export default function Home() {
       <div className="h-screen w-screen flex items-center justify-center bg-[#F8FAFC]">
         <div className="flex flex-col items-center gap-3">
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#7B68EE] border-t-transparent" />
-          <span className="text-xs text-slate-500 font-medium">Loading ClickUp Workspace...</span>
+          <span className="text-xs text-slate-500 font-medium">Loading Flowdesk Workspace...</span>
         </div>
       </div>
     );

@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { NotificationPopover } from './NotificationPopover';
 import { Search, ChevronDown, Check, LogOut, Settings, User as UserIcon, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { FlowdeskLogo } from './FlowdeskLogo';
 
 interface NavbarProps {
   onOpenSearch: () => void;
@@ -25,16 +26,9 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header className="h-14 border-b border-slate-200/80 bg-white px-5 flex items-center justify-between z-40 select-none shadow-xs">
       {/* Left: Brand + Active Workspace Selector */}
       <div className="flex items-center gap-4">
-        {/* ClickUp Brand Icon */}
-        <div className="flex items-center gap-2 pr-2 border-r border-slate-200">
-          <div className="w-7 h-7 rounded-lg bg-[#7B68EE] flex items-center justify-center text-white shadow-xs">
-            <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current">
-              <path d="M4 14.5L12 6.5L20 14.5L17.5 17L12 11.5L6.5 17L4 14.5Z" />
-            </svg>
-          </div>
-          <span className="font-extrabold text-sm tracking-tight text-slate-900">
-            Click<span className="text-[#7B68EE]">Up</span>
-          </span>
+        {/* Flowdesk Brand Logo */}
+        <div className="pr-3 border-r border-slate-200">
+          <FlowdeskLogo size="sm" />
         </div>
 
         {/* Workspace Selector */}

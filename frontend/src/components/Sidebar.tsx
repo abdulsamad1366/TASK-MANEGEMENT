@@ -303,7 +303,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="pt-3 border-t border-slate-100 text-[11px] text-slate-400 px-1 flex items-center justify-between">
         <span className="truncate font-medium text-slate-600">{activeWorkspace?.name}</span>
         <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-purple-50 text-[#7B68EE] font-bold">
-          CLICKUP MODE
+          FLOWDESK
         </span>
       </div>
     </aside>

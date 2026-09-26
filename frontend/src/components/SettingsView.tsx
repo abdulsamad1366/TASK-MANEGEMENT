@@ -282,7 +282,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <div className="flex-1">
                 <span className="font-bold text-slate-800">Clean Light Minimal Theme</span>
                 <p className="text-[11px] text-slate-500">
-                  Modeled after ClickUp with generous whitespace, soft grays, and purple accents.
+                  Official Flowdesk theme with generous whitespace, soft grays, and purple accents.
                 </p>
               </div>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-white text-[#7B68EE] border border-purple-200 shadow-xs">

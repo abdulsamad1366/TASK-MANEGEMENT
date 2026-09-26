@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Lock, Mail, User as UserIcon, ArrowRight, Sparkles } from 'lucide-react';
+import { FlowdeskLogo } from './FlowdeskLogo';
 
 export const AuthModal: React.FC = () => {
   const { login, register } = useAuth();
@@ -47,14 +48,10 @@ export const AuthModal: React.FC = () => {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-[2px] select-none">
       <div className="relative w-full max-w-md bg-white border border-slate-200/80 rounded-3xl shadow-2xl overflow-hidden p-8">
         {/* Brand Header */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#7B68EE] text-white shadow-md shadow-purple-500/20 mb-3">
-            <svg viewBox="0 0 24 24" className="w-6 h-6 fill-current">
-              <path d="M4 14.5L12 6.5L20 14.5L17.5 17L12 11.5L6.5 17L4 14.5Z" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Click<span className="text-[#7B68EE]">Up</span>
+        <div className="flex flex-col items-center justify-center text-center mb-6">
+          <FlowdeskLogo size="xl" showText={false} className="mb-2" />
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight mt-1">
+            Flow<span className="text-[#7B68EE]">desk</span>
           </h1>
           <p className="text-xs text-slate-500 mt-1">
             Clean, light, minimal team task management
