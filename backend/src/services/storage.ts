@@ -11,10 +11,10 @@ if (!fs.existsSync(uploadDir)) {
 
 // Multer disk storage configuration
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
+  destination: (_req: any, _file: any, cb: any) => {
     cb(null, uploadDir);
   },
-  filename: (_req, file, cb) => {
+  filename: (_req: any, file: any, cb: any) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
     const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
     cb(null, `${uniqueSuffix}-${sanitizedName}`);
@@ -27,7 +27,7 @@ export const upload = multer({
 });
 
 export const processUploadedFile = async (
-  file: Express.Multer.File,
+  file: any,
   bucketName = process.env.SUPABASE_STORAGE_BUCKET || 'attachments'
 ): Promise<{ fileUrl: string; fileName: string; fileSize: number; fileType: string }> => {
   // If Supabase Storage is configured, attempt upload
