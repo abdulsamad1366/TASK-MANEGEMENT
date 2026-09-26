@@ -346,14 +346,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             onClick={handleInvite}
             className={cn(
-              'w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium transition',
+              'w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-medium transition',
               currentTab === 'settings' && settingsTab === 'members'
                 ? 'bg-purple-50 text-[#7B68EE] font-bold'
                 : 'text-slate-600 hover:bg-slate-100'
             )}
           >
-            <Users className="w-3.5 h-3.5 text-[#7B68EE]" />
-            <span>Workspace Members</span>
+            <div className="flex items-center gap-2.5">
+              <Users className="w-3.5 h-3.5 text-[#7B68EE]" />
+              <span>Workspace Members</span>
+            </div>
+            {activeWorkspace?.joinRequests && activeWorkspace.joinRequests.length > 0 && (
+              <span
+                title={`${activeWorkspace.joinRequests.length} pending join request${activeWorkspace.joinRequests.length > 1 ? 's' : ''}`}
+                className="px-1.5 py-0.2 rounded-full bg-[#7B68EE] text-white text-[10px] font-bold shrink-0 animate-pulse"
+              >
+                {activeWorkspace.joinRequests.length}
+              </span>
+            )}
           </button>
           <button
             onClick={() => handleSelectTab('settings')}

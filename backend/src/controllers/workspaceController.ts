@@ -72,6 +72,13 @@ export const getWorkspace = async (req: Request, res: Response) => {
           },
         },
         invitations: true,
+        joinRequests: {
+          where: { status: 'PENDING' },
+          include: {
+            user: { select: { id: true, name: true, email: true, avatarUrl: true, role: true } },
+          },
+          orderBy: { requestedAt: 'desc' },
+        },
       },
     });
 
@@ -103,6 +110,7 @@ export const createWorkspace = async (req: Request, res: Response) => {
 
     const baseSlug = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
     const slug = `${baseSlug}-${Date.now().toString().slice(-4)}`;
+    const joinSlug = slug;
     const inviteCode =
       type === 'COMMUNITY'
         ? `COMMUNITY-${baseSlug.toUpperCase().slice(0, 10)}-${Math.floor(1000 + Math.random() * 9000)}`
@@ -112,6 +120,7 @@ export const createWorkspace = async (req: Request, res: Response) => {
       data: {
         name,
         slug,
+        joinSlug,
         description,
         type,
         joinPolicy,
@@ -629,12 +638,17 @@ export const regenerateInviteCode = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Workspace not found' });
     }
 
+    const baseSlug = workspace.slug.split('-')[0] || 'flow';
+    const newJoinSlug = `${baseSlug}-${Math.random().toString(36).substring(2, 8).toLowerCase()}`;
     const prefix = workspace.slug ? workspace.slug.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8) : 'FLOW';
     const newCode = `${prefix}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
     const updated = await prisma.workspace.update({
       where: { id: workspaceId },
-      data: { inviteCode: newCode },
+      data: {
+        inviteCode: newCode,
+        joinSlug: newJoinSlug,
+      },
       include: {
         members: {
           include: {
@@ -642,6 +656,13 @@ export const regenerateInviteCode = async (req: Request, res: Response) => {
           },
         },
         invitations: true,
+        joinRequests: {
+          where: { status: 'PENDING' },
+          include: {
+            user: { select: { id: true, name: true, email: true, avatarUrl: true, role: true } },
+          },
+          orderBy: { requestedAt: 'desc' },
+        },
       },
     });
 
@@ -649,10 +670,314 @@ export const regenerateInviteCode = async (req: Request, res: Response) => {
       message: 'Invite link regenerated successfully',
       workspace: updated,
       inviteCode: newCode,
+      joinSlug: newJoinSlug,
     });
   } catch (error) {
     console.error('regenerateInviteCode error:', error);
     return res.status(500).json({ error: 'Failed to regenerate invite link' });
+  }
+};
+
+// =========================================================================
+// WORKSPACE JOIN-REQUEST FLOW (PUBLIC LINK APPROVAL ARCHITECTURE)
+// =========================================================================
+
+export const getJoinInfo = async (req: Request, res: Response) => {
+  try {
+    const { slug } = req.params;
+
+    const workspace = await prisma.workspace.findFirst({
+      where: {
+        OR: [{ joinSlug: slug }, { joinSlug: null, slug: slug }],
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        joinSlug: true,
+        description: true,
+        logoUrl: true,
+        type: true,
+        joinPolicy: true,
+        _count: {
+          select: { members: true },
+        },
+      },
+    });
+
+    if (!workspace) {
+      return res.status(404).json({ error: 'This invite link is no longer valid or does not exist.' });
+    }
+
+    if (workspace.type === 'PERSONAL') {
+      return res.status(403).json({ error: 'Personal workspaces do not allow public join requests.' });
+    }
+
+    return res.status(200).json({
+      workspace: {
+        ...workspace,
+        memberCount: workspace._count.members,
+      },
+    });
+  } catch (error) {
+    console.error('getJoinInfo error:', error);
+    return res.status(500).json({ error: 'Failed to retrieve workspace information' });
+  }
+};
+
+export const createJoinRequest = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const { slug } = req.params;
+
+    const workspace = await prisma.workspace.findFirst({
+      where: {
+        OR: [{ joinSlug: slug }, { joinSlug: null, slug: slug }],
+      },
+      include: {
+        members: true,
+      },
+    });
+
+    if (!workspace) {
+      return res.status(404).json({ error: 'This invite link is no longer valid or does not exist.' });
+    }
+
+    if (workspace.type === 'PERSONAL') {
+      return res.status(403).json({ error: 'Personal workspaces do not allow public join requests.' });
+    }
+
+    // Check if user is already a member
+    const isMember = workspace.members.some((m) => m.userId === req.user!.id);
+    if (isMember) {
+      return res.status(200).json({
+        alreadyMember: true,
+        workspaceId: workspace.id,
+        workspaceName: workspace.name,
+        message: 'You are already a member of this workspace',
+      });
+    }
+
+    // Check if a pending join request already exists
+    const existing = await prisma.workspaceJoinRequest.findUnique({
+      where: {
+        workspaceId_userId: {
+          workspaceId: workspace.id,
+          userId: req.user!.id,
+        },
+      },
+    });
+
+    if (existing && existing.status === 'PENDING') {
+      return res.status(200).json({
+        alreadyRequested: true,
+        status: 'PENDING',
+        request: existing,
+        workspace: { id: workspace.id, name: workspace.name },
+        message: 'Request sent — waiting for approval',
+      });
+    }
+
+    // Upsert join request (re-activate if previously denied)
+    const joinRequest = await prisma.workspaceJoinRequest.upsert({
+      where: {
+        workspaceId_userId: {
+          workspaceId: workspace.id,
+          userId: req.user!.id,
+        },
+      },
+      create: {
+        workspaceId: workspace.id,
+        userId: req.user!.id,
+        requestedRole: 'MEMBER',
+        status: 'PENDING',
+        requestedAt: new Date(),
+      },
+      update: {
+        status: 'PENDING',
+        requestedAt: new Date(),
+        decidedBy: null,
+        decidedAt: null,
+      },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true, avatarUrl: true },
+        },
+      },
+    });
+
+    // Notify workspace Admins
+    const admins = workspace.members.filter((m) => m.role === 'ADMIN');
+    for (const admin of admins) {
+      await prisma.notification.create({
+        data: {
+          userId: admin.userId,
+          actorId: req.user!.id,
+          type: 'ASSIGNMENT',
+          title: 'New Join Request',
+          message: `${req.user!.name} requested to join ${workspace.name}`,
+          entityId: workspace.id,
+        },
+      }).catch(() => {});
+    }
+
+    console.log(`[JOIN REQUEST] ${req.user!.email} requested to join ${workspace.name} (${workspace.id})`);
+
+    return res.status(201).json({
+      success: true,
+      status: 'PENDING',
+      request: joinRequest,
+      workspace: { id: workspace.id, name: workspace.name },
+      message: 'Request sent — waiting for approval',
+    });
+  } catch (error) {
+    console.error('createJoinRequest error:', error);
+    return res.status(500).json({ error: 'Failed to submit join request' });
+  }
+};
+
+export const listJoinRequests = async (req: Request, res: Response) => {
+  try {
+    const { id: workspaceId } = req.params;
+
+    const requests = await prisma.workspaceJoinRequest.findMany({
+      where: {
+        workspaceId,
+        status: 'PENDING',
+      },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true, avatarUrl: true },
+        },
+      },
+      orderBy: { requestedAt: 'desc' },
+    });
+
+    return res.status(200).json({ requests });
+  } catch (error) {
+    console.error('listJoinRequests error:', error);
+    return res.status(500).json({ error: 'Failed to fetch join requests' });
+  }
+};
+
+export const approveJoinRequest = async (req: Request, res: Response) => {
+  try {
+    const { id: workspaceId, requestId } = req.params;
+    const { role = 'MEMBER' } = req.body;
+
+    const joinRequest = await prisma.workspaceJoinRequest.findFirst({
+      where: { id: requestId, workspaceId },
+      include: { user: true, workspace: true },
+    });
+
+    if (!joinRequest) {
+      return res.status(404).json({ error: 'Join request not found' });
+    }
+
+    if (joinRequest.status !== 'PENDING') {
+      return res.status(400).json({ error: `Join request is already ${joinRequest.status.toLowerCase()}` });
+    }
+
+    // 1. Update Join Request
+    await prisma.workspaceJoinRequest.update({
+      where: { id: requestId },
+      data: {
+        status: 'APPROVED',
+        decidedBy: req.user!.id,
+        decidedAt: new Date(),
+        requestedRole: role as any,
+      },
+    });
+
+    // 2. Insert into WorkspaceMember
+    const member = await prisma.workspaceMember.upsert({
+      where: {
+        workspaceId_userId: {
+          workspaceId,
+          userId: joinRequest.userId,
+        },
+      },
+      create: {
+        workspaceId,
+        userId: joinRequest.userId,
+        role: role as any,
+      },
+      update: {
+        role: role as any,
+      },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true, avatarUrl: true, role: true },
+        },
+      },
+    });
+
+    // 3. Notify the approved user
+    await prisma.notification.create({
+      data: {
+        userId: joinRequest.userId,
+        actorId: req.user!.id,
+        type: 'ASSIGNMENT',
+        title: 'Workspace Join Request Approved',
+        message: `Your request to join ${joinRequest.workspace.name} has been approved! You now have access.`,
+        entityId: workspaceId,
+      },
+    }).catch(() => {});
+
+    console.log(`[JOIN REQUEST APPROVED] User ${joinRequest.user.email} approved by ${req.user!.email} as ${role}`);
+
+    return res.status(200).json({
+      message: `Approved ${joinRequest.user.name} as ${role}`,
+      member,
+    });
+  } catch (error) {
+    console.error('approveJoinRequest error:', error);
+    return res.status(500).json({ error: 'Failed to approve join request' });
+  }
+};
+
+export const denyJoinRequest = async (req: Request, res: Response) => {
+  try {
+    const { id: workspaceId, requestId } = req.params;
+
+    const joinRequest = await prisma.workspaceJoinRequest.findFirst({
+      where: { id: requestId, workspaceId },
+      include: { user: true, workspace: true },
+    });
+
+    if (!joinRequest) {
+      return res.status(404).json({ error: 'Join request not found' });
+    }
+
+    await prisma.workspaceJoinRequest.update({
+      where: { id: requestId },
+      data: {
+        status: 'DENIED',
+        decidedBy: req.user!.id,
+        decidedAt: new Date(),
+      },
+    });
+
+    await prisma.notification.create({
+      data: {
+        userId: joinRequest.userId,
+        actorId: req.user!.id,
+        type: 'ASSIGNMENT',
+        title: 'Workspace Join Request Declined',
+        message: `Your request to join ${joinRequest.workspace.name} was declined by a workspace administrator.`,
+        entityId: workspaceId,
+      },
+    }).catch(() => {});
+
+    console.log(`[JOIN REQUEST DENIED] User ${joinRequest.user.email} denied by ${req.user!.email}`);
+
+    return res.status(200).json({ message: 'Join request declined' });
+  } catch (error) {
+    console.error('denyJoinRequest error:', error);
+    return res.status(500).json({ error: 'Failed to decline join request' });
   }
 };
 

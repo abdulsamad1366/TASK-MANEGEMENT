@@ -60,6 +60,12 @@ enum WorkspacePlan {
   ENTERPRISE
 }
 
+enum JoinRequestStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
 model User {
   id                    String              @id @default(cuid())
   email                 String              @unique
@@ -80,12 +86,15 @@ model User {
   notifications         Notification[]      @relation("UserNotifications")
   triggeredNotifications Notification[]     @relation("NotificationActor")
   attachments           Attachment[]
+  joinRequests          WorkspaceJoinRequest[] @relation("UserJoinRequests")
+  decidedJoinRequests   WorkspaceJoinRequest[] @relation("DecidedJoinRequests")
 }
 
 model Workspace {
   id              String              @id @default(cuid())
   name            String
   slug            String              @unique
+  joinSlug        String?             @unique @map("join_slug")
   description     String?
   logoUrl         String?
   type            WorkspaceType       @default(TEAM)
@@ -101,6 +110,7 @@ model Workspace {
 
   members         WorkspaceMember[]
   invitations     WorkspaceInvitation[]
+  joinRequests    WorkspaceJoinRequest[]
   spaces          Space[]
   tasks           Task[]
 }
@@ -130,6 +140,25 @@ model WorkspaceInvitation {
   createdAt   DateTime         @default(now())
 
   workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model WorkspaceJoinRequest {
+  id            String            @id @default(cuid())
+  workspaceId   String            @map("workspace_id")
+  userId        String            @map("user_id")
+  requestedRole Role              @default(MEMBER) @map("requested_role")
+  status        JoinRequestStatus @default(PENDING)
+  requestedAt   DateTime          @default(now()) @map("requested_at")
+  decidedBy     String?           @map("decided_by")
+  decidedAt     DateTime?         @map("decided_at")
+
+  workspace     Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user          User              @relation("UserJoinRequests", fields: [userId], references: [id], onDelete: Cascade)
+  decider       User?             @relation("DecidedJoinRequests", fields: [decidedBy], references: [id], onDelete: SetNull)
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId, status])
+  @@map("workspace_join_requests")
 }
 
 // ClickUp / Flowdesk Hierarchy: Workspace > Space > Project > List > Task

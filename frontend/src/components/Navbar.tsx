@@ -67,6 +67,14 @@ export const Navbar: React.FC<NavbarProps> = ({
               {getWorkspaceTypeIcon(activeWorkspace?.type)}
             </div>
             <span className="truncate max-w-[90px] sm:max-w-32.5">{activeWorkspace?.name || 'Workspace'}</span>
+            {activeWorkspace?.joinRequests && activeWorkspace.joinRequests.length > 0 && (
+              <span
+                title={`${activeWorkspace.joinRequests.length} pending join request${activeWorkspace.joinRequests.length > 1 ? 's' : ''}`}
+                className="px-1.5 py-0.2 rounded-full bg-[#7B68EE] text-white text-[9px] font-bold shrink-0 animate-pulse"
+              >
+                {activeWorkspace.joinRequests.length}
+              </span>
+            )}
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
           </button>
 

@@ -137,6 +137,23 @@ class ApiClient {
   regenerateInviteCode = (workspaceId: string) =>
     this.request<any>(`/workspaces/${workspaceId}/join-link/regenerate`, { method: 'POST' });
 
+  // Join Requests (Public link approval architecture)
+  getJoinInfo = (slug: string) =>
+    this.request<{ workspace: any }>(`/workspaces/join-info/${slug}`);
+  requestToJoin = (slug: string) =>
+    this.request<any>(`/workspaces/join/${slug}/request`, { method: 'POST' });
+  getJoinRequests = (workspaceId: string) =>
+    this.request<{ requests: any[] }>(`/workspaces/${workspaceId}/join-requests`);
+  approveJoinRequest = (workspaceId: string, requestId: string, role: string = 'MEMBER') =>
+    this.request<any>(`/workspaces/${workspaceId}/join-requests/${requestId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ role }),
+    });
+  denyJoinRequest = (workspaceId: string, requestId: string) =>
+    this.request<any>(`/workspaces/${workspaceId}/join-requests/${requestId}/deny`, {
+      method: 'POST',
+    });
+
   // Invitations
   getInvitation = (token: string) => this.request<any>(`/invitations/${token}`);
   acceptInvitation = (token: string) =>

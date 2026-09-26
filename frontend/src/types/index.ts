@@ -44,6 +44,7 @@ export interface Workspace {
   id: string;
   name: string;
   slug: string;
+  joinSlug?: string | null;
   description?: string | null;
   logoUrl?: string | null;
   type: WorkspaceType;
@@ -55,6 +56,7 @@ export interface Workspace {
   spaces?: Space[];
   projects?: Project[];
   invitations?: WorkspaceInvitation[];
+  joinRequests?: WorkspaceJoinRequest[];
   _count?: {
     members: number;
     spaces?: number;
@@ -72,6 +74,26 @@ export interface WorkspaceInvitation {
   invitedById?: string | null;
   expiresAt: string;
   createdAt: string;
+}
+
+export type JoinRequestStatus = 'PENDING' | 'APPROVED' | 'DENIED';
+
+export interface WorkspaceJoinRequest {
+  id: string;
+  workspaceId: string;
+  userId: string;
+  requestedRole: Role;
+  status: JoinRequestStatus;
+  requestedAt: string;
+  decidedBy?: string | null;
+  decidedAt?: string | null;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+    avatarUrl?: string | null;
+    role?: Role;
+  };
 }
 
 export interface Space {

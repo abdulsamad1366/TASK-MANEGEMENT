@@ -119,6 +119,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         >
           <Users className="w-3.5 h-3.5" />
           <span>Team Members ({members.length})</span>
+          {workspace.joinRequests && workspace.joinRequests.length > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full bg-[#7B68EE] text-white text-[10px] font-bold animate-pulse">
+              {workspace.joinRequests.length} pending
+            </span>
+          )}
         </button>
 
         <button

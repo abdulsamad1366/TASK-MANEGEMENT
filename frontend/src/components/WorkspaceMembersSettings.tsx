@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Workspace, WorkspaceMember, WorkspaceInvitation, Role } from '../types';
+import { Workspace, WorkspaceMember, WorkspaceInvitation, WorkspaceJoinRequest, Role } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import {
   Users,
+  UserPlus,
   Mail,
   Plus,
   X,
@@ -52,10 +53,13 @@ export const WorkspaceMembersSettings: React.FC<WorkspaceMembersSettingsProps> =
 }) => {
   const { user } = useAuth();
 
-  // Local state for workspace, members, and invitations
+  // Local state for workspace, members, invitations, and join requests
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace>(workspace);
   const [members, setMembers] = useState<WorkspaceMember[]>(initialMembers);
   const [invitations, setInvitations] = useState<WorkspaceInvitation[]>(workspace.invitations || []);
+  const [joinRequests, setJoinRequests] = useState<WorkspaceJoinRequest[]>(workspace.joinRequests || []);
+  const [selectedRequestRoles, setSelectedRequestRoles] = useState<Record<string, Role>>({});
+  const [isActingOnRequest, setIsActingOnRequest] = useState<Record<string, boolean>>({});
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
   // Section 1: Invite by Email state
@@ -71,7 +75,7 @@ export const WorkspaceMembersSettings: React.FC<WorkspaceMembersSettingsProps> =
 
   // Section 3: Search & filter state
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'all' | 'members' | 'pending'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'members' | 'pending' | 'requests'>('all');
   const [memberToRemove, setMemberToRemove] = useState<WorkspaceMember | null>(null);
   const [isRemovingMember, setIsRemovingMember] = useState(false);
 
@@ -101,7 +105,7 @@ export const WorkspaceMembersSettings: React.FC<WorkspaceMembersSettingsProps> =
   const canManageInvites = isAdmin || isManager;
   const canManageRoles = isAdmin;
 
-  // Refresh workspace and invitations from API
+  // Refresh workspace, invitations, and join requests from API
   const refreshWorkspaceData = async () => {
     try {
       const res = await api.getWorkspace(workspace.id);
@@ -109,6 +113,7 @@ export const WorkspaceMembersSettings: React.FC<WorkspaceMembersSettingsProps> =
         setCurrentWorkspace(res.workspace);
         if (res.workspace.members) setMembers(res.workspace.members);
         if (res.workspace.invitations) setInvitations(res.workspace.invitations);
+        if (res.workspace.joinRequests) setJoinRequests(res.workspace.joinRequests);
         if (onWorkspaceUpdated) onWorkspaceUpdated(res.workspace);
       }
     } catch (err) {
@@ -121,10 +126,68 @@ export const WorkspaceMembersSettings: React.FC<WorkspaceMembersSettingsProps> =
     setMembers(initialMembers);
     if (workspace.invitations) {
       setInvitations(workspace.invitations);
+    }
+    if (workspace.joinRequests) {
+      setJoinRequests(workspace.joinRequests);
     } else {
       refreshWorkspaceData();
     }
   }, [workspace.id, initialMembers]);
+
+  // Relative time helper
+  const formatTimeAgo = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffSecs = Math.floor(diffMs / 1000);
+      const diffMins = Math.floor(diffSecs / 60);
+      const diffHours = Math.floor(diffMins / 60);
+      const diffDays = Math.floor(diffHours / 24);
+
+      if (diffSecs < 60) return 'Just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      if (diffHours < 24) return `${diffHours}h ago`;
+      if (diffDays === 1) return 'Yesterday';
+      if (diffDays < 7) return `${diffDays}d ago`;
+      return date.toLocaleDateString();
+    } catch {
+      return 'Recently';
+    }
+  };
+
+  // Join Request Actions
+  const handleApproveJoinRequest = async (requestId: string, requesterName: string) => {
+    if (!canManageInvites) return;
+    const roleToAssign = selectedRequestRoles[requestId] || 'MEMBER';
+    setIsActingOnRequest((prev) => ({ ...prev, [requestId]: true }));
+    try {
+      await api.approveJoinRequest(currentWorkspace.id, requestId, roleToAssign);
+      addToast('success', `Approved ${requesterName} as ${roleToAssign.toLowerCase()}!`);
+      setJoinRequests((prev) => prev.filter((r) => r.id !== requestId));
+      await refreshWorkspaceData();
+      if (onRefreshMembers) onRefreshMembers();
+    } catch (err: any) {
+      addToast('error', err.message || 'Failed to approve join request');
+    } finally {
+      setIsActingOnRequest((prev) => ({ ...prev, [requestId]: false }));
+    }
+  };
+
+  const handleDenyJoinRequest = async (requestId: string, requesterName: string) => {
+    if (!canManageInvites) return;
+    setIsActingOnRequest((prev) => ({ ...prev, [requestId]: true }));
+    try {
+      await api.denyJoinRequest(currentWorkspace.id, requestId);
+      addToast('info', `Declined join request for ${requesterName}`);
+      setJoinRequests((prev) => prev.filter((r) => r.id !== requestId));
+      await refreshWorkspaceData();
+    } catch (err: any) {
+      addToast('error', err.message || 'Failed to decline join request');
+    } finally {
+      setIsActingOnRequest((prev) => ({ ...prev, [requestId]: false }));
+    }
+  };
 
   // Count active Admins to enforce only-admin rule
   const adminCount = members.filter((m) => m.role === 'ADMIN').length;
@@ -191,9 +254,7 @@ export const WorkspaceMembersSettings: React.FC<WorkspaceMembersSettingsProps> =
 
   // SECTION 2: SHAREABLE INVITE LINK
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const shareableJoinLink = currentWorkspace.inviteCode
-    ? `${origin}/invite/${currentWorkspace.inviteCode}`
-    : `${origin}/invite/${currentWorkspace.slug}`;
+  const shareableJoinLink = `${origin}/join/${currentWorkspace.joinSlug || currentWorkspace.slug}`;
 
   const isShareableLinkActive =
     currentWorkspace.type === 'COMMUNITY' ||
@@ -203,7 +264,7 @@ export const WorkspaceMembersSettings: React.FC<WorkspaceMembersSettingsProps> =
     if (!isShareableLinkActive) return;
     navigator.clipboard.writeText(shareableJoinLink);
     setCopiedLink(true);
-    addToast('success', 'Shareable invite link copied to clipboard!');
+    addToast('success', 'Shareable join link copied to clipboard!');
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
@@ -314,6 +375,15 @@ export const WorkspaceMembersSettings: React.FC<WorkspaceMembersSettingsProps> =
   const filteredPendingInvites = pendingInvites.filter((i) => {
     if (!searchQuery) return true;
     return i.email.toLowerCase().includes(searchQuery.toLowerCase());
+  });
+
+  const filteredJoinRequests = joinRequests.filter((r) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      r.user?.name?.toLowerCase().includes(q) ||
+      r.user?.email?.toLowerCase().includes(q)
+    );
   });
 
   return (
@@ -506,7 +576,7 @@ export const WorkspaceMembersSettings: React.FC<WorkspaceMembersSettingsProps> =
               </h2>
             </div>
             <p className="text-xs text-slate-500 mt-1 pl-9">
-              A persistent link allowing eligible members to join directly with a single click.
+              A persistent link allowing teammates to request access. An Admin must approve the request before access is granted.
             </p>
           </div>
 
@@ -544,7 +614,7 @@ export const WorkspaceMembersSettings: React.FC<WorkspaceMembersSettingsProps> =
                     Enable Shareable Public Join Link
                   </div>
                   <div className="text-[11px] text-slate-500 mt-0.5">
-                    When enabled, anyone with this link can immediately join as a Member.
+                    When enabled, anyone with this link can request to join the workspace (requires Admin approval).
                   </div>
                 </div>
 
@@ -611,7 +681,7 @@ export const WorkspaceMembersSettings: React.FC<WorkspaceMembersSettingsProps> =
 
                 <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
                   <Info className="w-3.5 h-3.5" />
-                  <span>Regenerating the link immediately invalidates the previous invite code.</span>
+                  <span>Regenerating the link immediately invalidates the previous join URL.</span>
                 </div>
               </div>
             ) : (
@@ -656,8 +726,8 @@ export const WorkspaceMembersSettings: React.FC<WorkspaceMembersSettingsProps> =
           </div>
         </div>
 
-        {/* View Tabs: All / Members / Pending */}
-        <div className="flex gap-2">
+        {/* View Tabs: All / Members / Direct Invites / Join Requests */}
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => setActiveTab('all')}
@@ -668,7 +738,7 @@ export const WorkspaceMembersSettings: React.FC<WorkspaceMembersSettingsProps> =
                 : 'text-slate-500 hover:bg-slate-100'
             )}
           >
-            All ({members.length + pendingInvites.length})
+            All ({members.length + pendingInvites.length + (canManageInvites ? joinRequests.length : 0)})
           </button>
           <button
             type="button"
@@ -692,9 +762,151 @@ export const WorkspaceMembersSettings: React.FC<WorkspaceMembersSettingsProps> =
                 : 'text-slate-500 hover:bg-slate-100'
             )}
           >
-            Pending Invites ({pendingInvites.length})
+            Direct Invites ({pendingInvites.length})
           </button>
+          {canManageInvites && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('requests')}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5',
+                activeTab === 'requests'
+                  ? 'bg-purple-50 text-[#7B68EE]'
+                  : 'text-slate-500 hover:bg-slate-100'
+              )}
+            >
+              <span>Join Requests</span>
+              {joinRequests.length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-[#7B68EE] text-white text-[10px] font-bold">
+                  {joinRequests.length}
+                </span>
+              )}
+            </button>
+          )}
         </div>
+
+        {/* Join Requests Section (Above members list in 'all', or when 'requests' tab is selected) */}
+        {canManageInvites &&
+          ((activeTab === 'all' && filteredJoinRequests.length > 0) || activeTab === 'requests') && (
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-[#7B68EE] uppercase tracking-wider">
+                    Join Requests ({filteredJoinRequests.length})
+                  </span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#7B68EE] animate-pulse" />
+                </div>
+                <span className="text-[10px] text-slate-400">
+                  Shared link requests awaiting approval
+                </span>
+              </div>
+
+              <div className="divide-y divide-purple-100/70 border border-purple-200/80 rounded-2xl overflow-hidden bg-purple-50/20 shadow-2xs">
+                {filteredJoinRequests.map((req) => {
+                  const reqRole = selectedRequestRoles[req.id] || 'MEMBER';
+                  const isActing = isActingOnRequest[req.id];
+
+                  return (
+                    <div
+                      key={req.id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 hover:bg-purple-50/50 transition gap-3"
+                    >
+                      {/* Requester Info */}
+                      <div className="flex items-center gap-3 min-w-0">
+                        {req.user?.avatarUrl ? (
+                          <img
+                            src={req.user.avatarUrl}
+                            alt={req.user.name}
+                            className="w-9 h-9 rounded-full object-cover shrink-0 ring-1 ring-purple-200"
+                          />
+                        ) : (
+                          <div className="w-9 h-9 rounded-full bg-[#7B68EE] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
+                            {req.user?.name?.charAt(0) || req.user?.email?.charAt(0) || 'U'}
+                          </div>
+                        )}
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs text-slate-900 truncate">
+                              {req.user?.name || 'New Teammate'}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-medium">
+                              • Requested {formatTimeAgo(req.requestedAt)}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-500 font-mono truncate">
+                            {req.user?.email}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Inline Actions: Role Selector + Approve (Primary) + Deny (Subtle Icon Button) */}
+                      <div className="flex items-center gap-2 self-end sm:self-center">
+                        {/* Inline Role Selector */}
+                        <select
+                          disabled={isActing}
+                          value={reqRole}
+                          onChange={(e) =>
+                            setSelectedRequestRoles((prev) => ({
+                              ...prev,
+                              [req.id]: e.target.value as Role,
+                            }))
+                          }
+                          className="text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-[#7B68EE]/20 focus:border-[#7B68EE] cursor-pointer"
+                        >
+                          <option value="MEMBER">Member</option>
+                          <option value="MANAGER">Manager</option>
+                          {isAdmin && <option value="ADMIN">Admin</option>}
+                        </select>
+
+                        {/* Approve: Primary Button */}
+                        <button
+                          type="button"
+                          disabled={isActing}
+                          onClick={() =>
+                            handleApproveJoinRequest(
+                              req.id,
+                              req.user?.name || req.user?.email || 'User'
+                            )
+                          }
+                          className="px-3.5 py-1.5 rounded-xl bg-[#7B68EE] hover:bg-[#6C5CE7] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-2xs disabled:opacity-50"
+                        >
+                          {isActing ? (
+                            <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                          ) : (
+                            <Check className="w-3.5 h-3.5" />
+                          )}
+                          <span>Approve</span>
+                        </button>
+
+                        {/* Deny: Subtle Icon Button */}
+                        <button
+                          type="button"
+                          disabled={isActing}
+                          onClick={() =>
+                            handleDenyJoinRequest(
+                              req.id,
+                              req.user?.name || req.user?.email || 'User'
+                            )
+                          }
+                          title="Decline request"
+                          className="p-1.5 rounded-xl border border-slate-200 bg-white hover:border-rose-200 hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition disabled:opacity-50"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {filteredJoinRequests.length === 0 && (
+                  <div className="p-8 text-center text-xs text-slate-400 italic bg-white">
+                    No pending join requests
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
         {/* Active Members Table */}
         {(activeTab === 'all' || activeTab === 'members') && (
