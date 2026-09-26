@@ -1,0 +1,19 @@
+{
+  "name": "syncplan-workspace",
+  "version": "1.0.0",
+  "description": "Full-featured team task management application (Linear/Jira/Asana style) with Next.js, Express, Prisma, Supabase PostgreSQL, and Socket.io",
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"blue,green\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "build": "npm run build:backend && npm run build:frontend",
+    "seed": "cd backend && npm run seed",
+    "db:sqlite": "cd backend && npm run db:sqlite",
+    "db:supabase": "cd backend && npm run db:supabase"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

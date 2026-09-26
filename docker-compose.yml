@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  # Backend API Server
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: task-management-backend
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    environment:
+      - PORT=5001
+      - NODE_ENV=production
+      - CLIENT_URL=http://localhost:3000
+      - DATABASE_URL=postgresql://postgres:postgrespassword@postgres:5432/taskmanagement?schema=public
+      - JWT_SECRET=super_secret_docker_jwt_key_123456789
+      - JWT_REFRESH_SECRET=super_secret_docker_refresh_jwt_key_987654321
+    volumes:
+      - backend-uploads:/app/uploads
+    depends_on:
+      - postgres
+
+  # PostgreSQL Database (used if not connecting directly to Supabase cloud)
+  postgres:
+    image: postgres:16-alpine
+    container_name: task-management-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: taskmanagement
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  backend-uploads:
+  postgres-data:
