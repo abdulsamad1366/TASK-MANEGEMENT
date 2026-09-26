@@ -32,11 +32,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={() => setShowWorkspaceMenu(!showWorkspaceMenu)}
             className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition"
           >
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
+            <div className="w-8 h-8 rounded-lg bg-linear-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
               {activeWorkspace?.name?.charAt(0) || 'W'}
             </div>
             <div className="text-left hidden sm:block">
-              <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate max-w-[140px]">
+              <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate max-w-35">
                 {activeWorkspace?.name || 'Workspace'}
               </div>
               <div className="text-[10px] text-slate-400 font-medium">Team Space</div>

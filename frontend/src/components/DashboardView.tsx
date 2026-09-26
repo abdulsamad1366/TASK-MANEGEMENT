@@ -340,7 +340,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition text-xs group"
               >
                 <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                  <span className="font-mono text-slate-400 font-bold flex-shrink-0">
+                  <span className="font-mono text-slate-400 font-bold shrink-0">
                     {t.project?.key ? `${t.project.key}-${t.taskNumber}` : '#'}
                   </span>
                   <span className="font-medium text-slate-800 dark:text-slate-200 truncate group-hover:text-indigo-600 transition">
@@ -350,7 +350,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                 <span
                   className={cn(
-                    'text-[10px] font-semibold px-2 py-0.5 rounded-full border flex-shrink-0',
+                    'text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0',
                     getPriorityBadge(t.priority).bg,
                     getPriorityBadge(t.priority).text,
                     getPriorityBadge(t.priority).border

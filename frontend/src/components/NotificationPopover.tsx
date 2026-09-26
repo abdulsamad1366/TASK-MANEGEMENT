@@ -127,7 +127,7 @@ export const NotificationPopover: React.FC<NotificationPopoverProps> = ({ onSele
                     <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
                       {n.title}
                     </span>
-                    <span className="text-[10px] text-slate-400 ml-2 flex-shrink-0">
+                    <span className="text-[10px] text-slate-400 ml-2 shrink-0">
                       {format(new Date(n.createdAt), 'MMM d, h:mm a')}
                     </span>
                   </div>
@@ -137,7 +137,7 @@ export const NotificationPopover: React.FC<NotificationPopoverProps> = ({ onSele
                 </div>
 
                 {!n.isRead && (
-                  <span className="w-2 h-2 rounded-full bg-indigo-500 mt-2 flex-shrink-0" />
+                  <span className="w-2 h-2 rounded-full bg-indigo-500 mt-2 shrink-0" />
                 )}
               </div>
             ))}

@@ -111,7 +111,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           return (
             <div
               key={column.id}
-              className="flex-shrink-0 w-80 flex flex-col rounded-2xl bg-slate-100/70 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 max-h-[calc(100vh-220px)]"
+              className="shrink-0 w-80 flex flex-col rounded-2xl bg-slate-100/70 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 max-h-[calc(100vh-220px)]"
             >
               {/* Column Header */}
               <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-200/60 dark:border-slate-800/60">
@@ -149,7 +149,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     ref={provided.innerRef}
                     {...provided.droppableProps}
                     className={cn(
-                      'flex-1 p-2.5 space-y-2.5 overflow-y-auto min-h-[140px] transition-colors',
+                      'flex-1 p-2.5 space-y-2.5 overflow-y-auto min-h-35 transition-colors',
                       snapshot.isDraggingOver && 'bg-indigo-500/5 dark:bg-indigo-500/10 rounded-b-2xl'
                     )}
                   >
@@ -196,7 +196,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         {onAddColumn && (
           <button
             onClick={onAddColumn}
-            className="flex-shrink-0 w-80 h-14 flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700 transition text-sm font-medium"
+            className="shrink-0 w-80 h-14 flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700 transition text-sm font-medium"
           >
             <Plus className="w-4 h-4" />
             <span>Add Column</span>

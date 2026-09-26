@@ -18,10 +18,10 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ tasks, onTaskClick }
 
   return (
     <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-sm overflow-x-auto">
-      <div className="min-w-[800px]">
+      <div className="min-w-200">
         {/* Timeline Header Days */}
         <div className="flex border-b border-slate-200 dark:border-slate-800 pb-3 mb-4">
-          <div className="w-64 font-bold text-xs text-slate-400 uppercase tracking-wider flex-shrink-0">
+          <div className="w-64 font-bold text-xs text-slate-400 uppercase tracking-wider shrink-0">
             Task
           </div>
           <div className="flex-1 grid grid-cols-21 gap-1 text-center">
@@ -60,7 +60,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ tasks, onTaskClick }
                 {/* Task Label on left */}
                 <div
                   onClick={() => onTaskClick(task)}
-                  className="w-64 flex-shrink-0 cursor-pointer pr-4"
+                  className="w-64 shrink-0 cursor-pointer pr-4"
                 >
                   <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition">
                     {task.title}

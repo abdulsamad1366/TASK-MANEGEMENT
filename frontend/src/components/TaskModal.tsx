@@ -735,7 +735,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                         href={att.fileUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="truncate font-medium text-indigo-600 dark:text-indigo-400 hover:underline max-w-[140px]"
+                        className="truncate font-medium text-indigo-600 dark:text-indigo-400 hover:underline max-w-35"
                       >
                         {att.fileName}
                       </a>

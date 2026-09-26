@@ -89,7 +89,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 >
                   <div className="flex items-center gap-2.5 min-w-0 pr-2">
                     <span
-                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
                       style={{ backgroundColor: p.color }}
                     />
                     <span className="truncate">{p.name}</span>

@@ -77,7 +77,7 @@ export const ListView: React.FC<ListViewProps> = ({
                         />
                       )}
 
-                      <span className="text-xs font-mono font-bold text-slate-400 dark:text-slate-500 w-16 flex-shrink-0">
+                      <span className="text-xs font-mono font-bold text-slate-400 dark:text-slate-500 w-16 shrink-0">
                         {task.project?.key ? `${task.project.key}-${task.taskNumber}` : `#${task.taskNumber}`}
                       </span>
 
@@ -86,7 +86,7 @@ export const ListView: React.FC<ListViewProps> = ({
                       </span>
 
                       {/* Labels */}
-                      <div className="hidden md:flex items-center gap-1.5 flex-shrink-0">
+                      <div className="hidden md:flex items-center gap-1.5 shrink-0">
                         {labels.slice(0, 2).map((lbl, idx) => (
                           <span
                             key={idx}
@@ -99,7 +99,7 @@ export const ListView: React.FC<ListViewProps> = ({
                     </div>
 
                     {/* Right: Priority + Due Date + Assignees */}
-                    <div className="flex items-center gap-5 flex-shrink-0 text-xs">
+                    <div className="flex items-center gap-5 shrink-0 text-xs">
                       {/* Priority Badge */}
                       <span
                         className={cn(
